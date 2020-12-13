@@ -8,8 +8,11 @@ class GCA:
         self.process = SOI()
         self.extract_real_dimensions_from_drawn_dimensions(drawn_dimensions_filename)
 
-        self.x0 = self.init_state() if (x0 is None) else x0
+        self.x0 = np.array([0., 0.]) if (x0 is None) else x0
         self.terminate_simulation = lambda t, x: False  # Can be set manually if needed
+
+        # To access important simulation variables after the simulation
+        self.sim_log = {}
 
     def dx_dt(self, t, x, u):
         t_SOI = self.process.t_SOI
@@ -18,10 +21,15 @@ class GCA:
         m_spring = 2 * self.supportW * self.supportL * t_SOI * density
         m_eff = m + m_spring / 3
         m_total = m_eff + self.Nfing * self.process.density_fluid * (self.fingerL ** 2) * (self.process.t_SOI ** 2) / (
-                    2 * (self.fingerL + self.process.t_SOI))
+                2 * (self.fingerL + self.process.t_SOI))
+
+        Fes = self.Fes(x, u)
+        Fb = self.Fb(x, u)
+        Fk = self.Fk(x, u)
+        self.add_to_sim_log(['t', 'Fes', 'Fb', 'Fk'], [t, Fes, Fb, Fk])
 
         return np.array([x[1],
-                         (self.Fes(x, u) - self.Fb(x, u) - self.Fk(x, u)) / m_total])
+                         (Fes - Fb - Fk) / m_total])
 
     def Fes(self, x, u):
         x, xdot = self.unzip_state(x)
@@ -64,13 +72,14 @@ class GCA:
 
     def pulled_in(self, t, x):
         x, xdot = self.unzip_state(x)
+        # print("Termination check: {}, {}".format(x, self.x_GCA))
         return x >= self.x_GCA
 
     def pulled_out(self, t, x):
         x, xdot = self.unzip_state(x)
         return x <= 0
 
-    ### Helper functions ###
+    # Helper functions
     def extract_real_dimensions_from_drawn_dimensions(self, drawn_dimensions_filename):
         overetch = self.process.overetch
 
@@ -123,8 +132,11 @@ class GCA:
             if "armW" in drawn_dimensions:  # GCA includes arm (attached to inchworm motor)
                 self.spineA += self.armW * self.armL
 
-    def init_state(self):
-        return np.array([0, 0])
+    def add_to_sim_log(self, names, values):
+        for name, value in zip(names, values):
+            if name not in self.sim_log:
+                self.sim_log[name] = np.array([])
+            self.sim_log[name] = np.append(self.sim_log[name], value)
 
     @staticmethod
     def unzip_state(x):

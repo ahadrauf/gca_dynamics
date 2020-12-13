@@ -3,16 +3,19 @@ from gca import GCA
 
 
 class Assembly:
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.parts = []
 
     def x0(self):
         return np.hstack([part.x0 for part in self.parts])
 
-    def dx_dt(self, t, x, u):
+    def dx_dt(self, t, x, u, verbose=False):
         x_parts = self.unzip_state(x)
         u_parts = self.unzip_input(u)
-        return np.hstack([part.dx_dt(t, x, u(t, x)) for (part, x, u) in zip(self.parts, x_parts, u_parts)])
+        dx_dt = np.hstack([part.dx_dt(t, x, u(t, x)) for (part, x, u) in zip(self.parts, x_parts, u_parts)])
+        if verbose:
+            print("t: {}, x: {}, u: {}, dx/dt: {}".format(t, x, u(t, x), dx_dt))
+        return dx_dt
 
     def unzip_state(self, x):
         """
@@ -32,12 +35,13 @@ class Assembly:
 
     def terminate_simulation(self, t, x):
         x_parts = self.unzip_state(x)
-        return np.any([part.terminate_simulation(t, x) for part, x in zip(self.parts, x_parts)])
+        terminate = np.any([part.terminate_simulation(t, x) for part, x in zip(self.parts, x_parts)])
+        return not terminate  # I don't know why I need to invert it, but it works
 
 
 class AssemblyGCA(Assembly):
-    def __init__(self):
-        Assembly.__init__(self)
+    def __init__(self, **kwargs):
+        Assembly.__init__(self, **kwargs)
         self.gca = GCA("fawn.csv")
         self.parts = [self.gca]
 
