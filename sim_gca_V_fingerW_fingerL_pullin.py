@@ -13,7 +13,8 @@ def setup_model():
 
 def setup_inputs(**kwargs):
     V = kwargs["V"]
-    return lambda t, x: np.array([V])
+    Fext = kwargs["Fext"]
+    return lambda t, x: np.array([V, Fext])
 
 
 def sim_gca(model, u, t_span, verbose=False):
@@ -39,6 +40,7 @@ def setup_plot(len_x, len_y, plt_title=None, x_label="", y_label=""):
 if __name__ == "__main__":
     model = setup_model()
     t_span = [0, 100e-6]
+    Fext = 0
 
     fingerW_values = [3e-6, 4e-6, 7e-6]
     fingerL_values = [30e-6, 50e-6, 90e-6]
@@ -57,7 +59,7 @@ if __name__ == "__main__":
             V_converged = []
             times_converged = []
             for V in V_values:
-                u = setup_inputs(V=V)
+                u = setup_inputs(V=V, Fext=Fext)
                 sol = sim_gca(model, u, t_span)
 
                 if len(sol.t_events[0]) > 0:

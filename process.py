@@ -7,6 +7,6 @@ class SOI:
         self.eps0 = 8.85e-12  # permittivity of free space
         self.E = 170e9  # Young's modulus of silicon (N/m2)
         self.density = 2300  # density of silicon (kg/m3)
-        self.density_fluid = 1.1839	# density of air (kg/m3)
+        self.density_fluid = 1.1839	 # density of air (kg/m3)
         self.mu = 1.85e-5  # dynamic viscosity of air
         self.mfp = 68e-9  # mean free path of air (m)

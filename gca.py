@@ -23,19 +23,20 @@ class GCA:
         m_total = m_eff+self.Nfing*self.process.density_fluid*(self.fingerL**2)*(self.process.t_SOI**2)/(
                 2*(self.fingerL+self.process.t_SOI))
 
+        V, Fext = self.unzip_input(u)
         Fes = self.Fes(x, u)
         Fb = self.Fb(x, u)
         Fk = self.Fk(x, u)
         self.add_to_sim_log(['t', 'Fes', 'Fb', 'Fk'], [t, Fes, Fb, Fk])
 
         return np.array([x[1],
-                         (Fes-Fb-Fk)/m_total])
+                         (Fes-Fb-Fk-Fext)/m_total])
 
     def Fes(self, x, u):
         x, xdot = self.unzip_state(x)
-        V = self.unzip_input(u)
-        return self.Nfing*0.5*(V**2)*self.process.eps0*self.process.t_SOI*self.fingerL*(
-                1/(self.gf-x)**2-1/(self.gb+x)**2)
+        V, Fext = self.unzip_input(u)
+        return self.Nfing*0.5*(V**2)*self.process.eps0*self.process.t_SOI*self.fingerL* \
+               (1/(self.gf-x)**2-1/(self.gb+x)**2)
 
     def Fk(self, x, u):
         x, xdot = self.unzip_state(x)
@@ -53,15 +54,25 @@ class GCA:
         S2 = min(fingerL, t_SOI)
         beta = lambda eta: 1-(1-0.42)*eta
 
-        t_SOI_primef = t_SOI+0.81*(1+0.94*self.process.mfp/(gf-x))*(gf-x)
-        t_SOI_primeb = t_SOI+0.81*(1+0.94*self.process.mfp/(gb+x))*(gb+x)
-        bsff = self.process.mu*self.Nfing*S1*(S2**3)*beta(S2/S1)*(1/(gf-x)**3)
-        bsfb = self.process.mu*self.Nfing*S1*(S2**3)*beta(S2/S1)*(1/(gb+x)**3)
-        bsf_adjf = (4*(gf-x)**3*fingerW+2*self.process.t_ox**3*t_SOI_primef)/(
-                (gf-x)**3*fingerW+2*self.process.t_ox**3*t_SOI_primef)
-        bsf_adjb = (4*(gb+x)**3*fingerW+2*self.process.t_ox**3*t_SOI_primeb)/(
-                (gb+x)**3*fingerW+2*self.process.t_ox**3*t_SOI_primeb)
-        bsf = bsff*bsf_adjf+bsfb*bsf_adjb
+        def bsf_calc1():
+            bsff = self.process.mu*self.Nfing*S1*(S2**3)*beta(S2/S1)*(1/(gf-x)**3)
+            bsfb = self.process.mu*self.Nfing*S1*(S2**3)*beta(S2/S1)*(1/(gb+x)**3)
+            bsf = bsff+bsfb
+            return bsf
+
+        def bsf_calc2():
+            t_SOI_primef = t_SOI+0.81*(1+0.94*self.process.mfp/(gf-x))*(gf-x)
+            t_SOI_primeb = t_SOI+0.81*(1+0.94*self.process.mfp/(gb+x))*(gb+x)
+            bsff = self.process.mu*self.Nfing*S1*(S2**3)*beta(S2/S1)*(1/(gf-x)**3)
+            bsfb = self.process.mu*self.Nfing*S1*(S2**3)*beta(S2/S1)*(1/(gb+x)**3)
+            bsf_adjf = (4*(gf-x)**3*fingerW+2*self.process.t_ox**3*t_SOI_primef)/(
+                    (gf-x)**3*fingerW+2*self.process.t_ox**3*t_SOI_primef)
+            bsf_adjb = (4*(gb+x)**3*fingerW+2*self.process.t_ox**3*t_SOI_primeb)/(
+                    (gb+x)**3*fingerW+2*self.process.t_ox**3*t_SOI_primeb)
+            bsf = bsff*bsf_adjf+bsfb*bsf_adjb
+            return bsf
+
+        bsf = bsf_calc1()
 
         # Couette flow damping
         bcf = self.process.mu*self.spineA/self.process.t_ox
@@ -75,9 +86,37 @@ class GCA:
         # print("Termination check: {}, {}".format(x, self.x_GCA))
         return x >= self.x_GCA
 
-    def pulled_out(self, t, x):
+    def released(self, t, x):
         x, xdot = self.unzip_state(x)
         return x <= 0
+
+    def x0_pullin(self):
+        return np.array([0, 0])
+
+    def x0_release(self, u):
+        V, Fext = self.unzip_input(u)
+        x = np.array([self.x_GCA, 0])
+        Fes = self.Fes(x, u)/self.Nfing  # Fes for one finger!
+
+        # Finger release dynamics
+        I_fing = (self.fingerW**3)*self.process.t_SOI/12
+        k_fing = 8*self.process.E*I_fing/(self.fingerL_total**3)
+        m_fing = self.fingerW*self.fingerL*self.process.t_SOI*self.process.density
+        x_fing = Fes/k_fing
+        w1 = (1.875**2)*np.sqrt(self.process.E*I_fing/(self.process.density*self.process.t_SOI*
+                                                       (self.fingerL_total**4)*self.fingerW))
+        v_fing = w1*x_fing/2
+
+        # Spine axial spring compression
+        k_spine = self.process.E*(self.process.t_SOI*self.spineW)/self.spineL
+        m_spine = self.mainspineA*self.process.t_SOI*self.process.density
+        x_spine = self.Nfing*Fes/k_spine
+        v_spine = x_spine*np.sqrt(k_spine/m_spine)
+
+        # Conservation of linear momentum
+        v0 = (self.Nfing*m_fing*v_fing+m_spine*v_spine)/(self.Nfing*m_fing+m_spine)
+        print('Release values (Fes, v_fing, v_spine, v0):', Fes, v_fing, v_spine, v0)
+        return np.array([self.x_GCA, -v0])
 
     # Helper functions
     def extract_real_dimensions_from_drawn_dimensions(self, drawn_dimensions_filename):
@@ -122,7 +161,7 @@ class GCA:
             self.k_support = 2*self.process.E*(self.supportW**3)*self.process.t_SOI/(self.supportL**3)
         self.gs = self.gf-self.x_GCA
         self.fingerL_total = self.fingerL+self.fingerL_buffer
-        self.num_etch_holes = round((self.spineL-self.etch_hole_spacing-self.process.overetch) /
+        self.num_etch_holes = round((self.spineL-self.etch_hole_spacing-self.process.overetch)/
                                     (self.etch_hole_spacing+self.etch_hole_size))
         self.mainspineA = self.spineW*self.spineL-self.num_etch_holes*(self.etch_hole_size**2)
         self.spineA = self.mainspineA+self.Nfing*self.fingerL_total*self.fingerW+ \
@@ -144,7 +183,8 @@ class GCA:
     @staticmethod
     def unzip_input(u):
         V = u[0]
-        return V
+        Fext = u[1]
+        return V, Fext
 
 
 if __name__ == "__main__":
