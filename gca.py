@@ -61,6 +61,18 @@ class GCA:
             return bsf
 
         def bsf_calc2():
+            t_SOI_primef = t_SOI
+            t_SOI_primeb = t_SOI
+            bsff = self.process.mu*self.Nfing*S1*(S2**3)*beta(S2/S1)*(1/(gf-x)**3)
+            bsfb = self.process.mu*self.Nfing*S1*(S2**3)*beta(S2/S1)*(1/(gb+x)**3)
+            bsf_adjf = (4*(gf-x)**3*fingerW+2*self.process.t_ox**3*t_SOI_primef)/(
+                    (gf-x)**3*fingerW+2*self.process.t_ox**3*t_SOI_primef)
+            bsf_adjb = (4*(gb+x)**3*fingerW+2*self.process.t_ox**3*t_SOI_primeb)/(
+                    (gb+x)**3*fingerW+2*self.process.t_ox**3*t_SOI_primeb)
+            bsf = bsff*bsf_adjf+bsfb*bsf_adjb
+            return bsf
+
+        def bsf_calc3():
             t_SOI_primef = t_SOI+0.81*(1+0.94*self.process.mfp/(gf-x))*(gf-x)
             t_SOI_primeb = t_SOI+0.81*(1+0.94*self.process.mfp/(gb+x))*(gb+x)
             bsff = self.process.mu*self.Nfing*S1*(S2**3)*beta(S2/S1)*(1/(gf-x)**3)
@@ -72,7 +84,7 @@ class GCA:
             bsf = bsff*bsf_adjf+bsfb*bsf_adjb
             return bsf
 
-        bsf = bsf_calc1()
+        bsf = bsf_calc3()
 
         # Couette flow damping
         bcf = self.process.mu*self.spineA/self.process.t_ox

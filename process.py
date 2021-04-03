@@ -1,6 +1,6 @@
 class SOI:
     def __init__(self):
-        self.overetch = 0.5e-6  # process overetch (m)
+        self.overetch = 0.48e-6  # process overetch (m)
         self.t_SOI = 40e-6  # thickness of silicon (m)
         self.t_ox = 2e-6  # thickness of oxide (m)
         self.t_gold = 500e-9  # depends on exact process (m)

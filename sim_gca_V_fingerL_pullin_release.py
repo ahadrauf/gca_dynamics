@@ -53,7 +53,7 @@ def plot_data(fig, axs, pullin_V, pullin_avg, pullin_std, release_V, release_avg
         for idy in range(ny):
             i = nx*idy+idx
             # ax = plt.subplot(nx, ny, i+1)
-            ax = axs[idx, idy]
+            ax = axs[idy, idx]
             ax.errorbar(pullin_V[i], pullin_avg[i], pullin_std[i], fmt='b.', capsize=5)
             # ax.errorbar(release_V[i], release_avg[i], release_std[i], fmt='r.', capsize=5)
             # ax.text(0.6*ax.get_xlim()[-1], 0.85*ax.get_ylim()[-1], labels[i])
@@ -109,7 +109,15 @@ if __name__ == "__main__":
         V_converged = []
         times_converged = []
 
-        V_test = np.sort(np.append(V_values, [pullin_V[idy], pullin_V[idy]+0.2]))  # Add some extra values to test
+        # V_test = np.sort(np.append(V_values, [pullin_V[idy], pullin_V[idy]+0.2]))  # Add some extra values to test
+        V_test = []
+        for V in V_values:
+            # V_test.append(V - 0.1)
+            V_test.append(V)
+            # V_test.append(V + 0.2)
+            V_test.append(V + 0.5)
+            V_test.append(V + 1)
+            V_test.append(V + 1.5)
         # (adds a lot of compute time, since failed simulations take time)
         for V in V_test:
             u = setup_inputs(V=V, Fext=Fext)
@@ -122,7 +130,7 @@ if __name__ == "__main__":
 
         # ax = plt.subplot(nx, ny, idy+1)
         # plt.plot(V_converged, times_converged)
-        axs[idy // ny, idy % ny].plot(V_converged, times_converged)
+        axs[idy % ny, idy // ny].plot(V_converged, times_converged)
         # ax.text(0.8*ax.get_xlim()[-1], 0.8*ax.get_ylim()[-1], "w={}um\nL={}um".format(fingerW*1e6, fingerL*1e6))
         # ax.set_aspect(1.0/ax.get_data_ratio(), adjustable='box')
 
