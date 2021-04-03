@@ -5,8 +5,12 @@ import matplotlib.pyplot as plt
 
 
 def setup_model_pullin():
-    model = AssemblyGCA()
+    model = AssemblyGCA("gamma.csv")
     model.gca.x0 = model.gca.x0_pullin()
+    # model.gca.x0[0] = -(2e-6 + 2*model.gca.process.overetch)
+    # print(model.gca.x0)
+    # print(2e-6 + 2*model.gca.process.overetch)
+    # print(model.gca.x0[0])
     model.gca.terminate_simulation = model.gca.pulled_in
     return model
 
@@ -51,7 +55,7 @@ def plot_solution(sol, t_sim, model, plt_title=None):
     ax1_right.plot(t_sim*1e6, x_sim[1, :], 'r-')
     ax1_right.yaxis.tick_right()
     ax1_right.yaxis.set_label_position("right")
-    plt.ylabel("xdot (m/s)")
+    plt.ylabel("dx/dt (m/s)")
     ax1_right.yaxis.label.set_color('red')
     ax1_right.set_aspect(1.0/ax1_right.get_data_ratio(), adjustable='box')
 
@@ -67,19 +71,27 @@ def plot_solution(sol, t_sim, model, plt_title=None):
     plt.legend()
     plt.xlabel('t (us)')
     plt.ylabel('Force (N)')
+    ax2.semilogy(True)
     ax2.set_aspect(1.0/ax2.get_data_ratio(), adjustable='box')
 
     # fig.tight_layout()
-    plt.subplots_adjust(wspace=0.4)
+    # plt.subplots_adjust(wspace=0.4)
+    plt.tight_layout()
     plt.show()
 
 
 if __name__ == "__main__":
-    V = 20
-    Fext = 0
+    V = 40
+    Fext = 50e-6
     model = setup_model_pullin()#  V=V, Fext=Fext)  # Change for pullin/release
-    u = setup_inputs(V=V, Fext=Fext)  # Change V=V for pullin, V=0 for release
-    t_span = [0, 100e-6]
+    model.gca.add_support_spring(springW=5e-6, springL=594.995e-6, nBeams=16,
+                                 endcapW=22.889e-6, endcapL=49.441e-6,
+                                 etchholeSize=8e-6, nEtchHoles=3, nEndCaps=8*2,
+                                 k=Fext/(385.33e-6 + 2*model.gca.process.overetch))
+    print(model.gca.k_support)
+    print(Fext/(385.33e-6 + 2*model.gca.process.overetch))
+    u = setup_inputs(V=V, Fext=0.)  # Change V=V for pullin, V=0 for release
+    t_span = [0, 200e-6]
     sol = sim_gca(model, u, t_span)
     print('End time:', sol.t_events[0])
 

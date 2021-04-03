@@ -10,6 +10,8 @@ class GCA:
 
         self.x0 = np.array([0., 0.]) if (x0 is None) else x0
         self.terminate_simulation = lambda t, x: False  # Can be set manually if needed
+        self.extra_spring_area = 0.
+        self.extra_spring_k = 0.
 
         # To access important simulation variables after the simulation
         self.sim_log = {}
@@ -18,16 +20,23 @@ class GCA:
         t_SOI = self.process.t_SOI
         density = self.process.density
         m = self.spineA*t_SOI*density
-        m_spring = 2*self.supportW*self.supportL*t_SOI*density
+        m_spring = (2*self.supportW*self.supportL + self.extra_spring_area)*t_SOI*density
         m_eff = m + m_spring/3
+        # print(m, m_spring, 2*self.supportW*self.supportL, self.extra_spring_area)
         m_total = m_eff + self.Nfing*self.process.density_fluid*(self.fingerL**2)*(self.process.t_SOI**2)/(
                 2*(self.fingerL + self.process.t_SOI))
+        # print(m, m_spring/3, self.Nfing*self.process.density_fluid*(self.fingerL**2)*(self.process.t_SOI**2)/(
+        #         2*(self.fingerL + self.process.t_SOI)))
 
         V, Fext = self.unzip_input(u)
         Fes = self.Fes(x, u)
         Fb = self.Fb(x, u)
         Fk = self.Fk(x, u)
         self.add_to_sim_log(['t', 'Fes', 'Fb', 'Fk'], [t, Fes, Fb, Fk])
+        # print('t: {:.4E}, V: {:.1f}, x: {:.4E}, v: {:.4E} | Fes: {:.4E}, Fb: {:.4E}, Fk: {:.4E}, Fext: {:.4E}'.format(
+        #     t, u[0], x[0], x[1], Fes, Fb, Fk, u[1]
+        # ))
+        # print('t:', t, '(x, v)', x, '(Fes, Fb, Fk, u)', Fes, Fb, Fk, u)
 
         return np.array([x[1],
                          (Fes - Fb - Fk - Fext)/m_total])
@@ -40,7 +49,8 @@ class GCA:
 
     def Fk(self, x, u):
         x, xdot = self.unzip_state(x)
-        return self.k_support*x
+        # print(self.k_support*x, self.extra_spring_k*(x - self.x0[0]))
+        return self.k_support*x + self.extra_spring_k*(x - -385.33e-6)
 
     def Fb(self, x, u):
         x, xdot = self.unzip_state(x)
@@ -103,7 +113,7 @@ class GCA:
         return x <= 0
 
     def x0_pullin(self):
-        return np.array([0, 0])
+        return np.array([0., 0.])
 
     def x0_release(self, u):
         V, Fext = self.unzip_input(u)
@@ -130,6 +140,18 @@ class GCA:
         print('Release values (Fes, v_fing, v_spine, v0):', Fes, v_fing, v_spine, v0)
         return np.array([self.x_GCA, -v0])
 
+    # Mostly for Craig's force test
+    def add_support_spring(self, springW, springL, nBeams, endcapW, endcapL, etchholeSize, nEtchHoles, nEndCaps, k):
+        # Include both half beams as one beam
+        springW -= 2*self.process.overetch
+        endcapW -= 2*self.process.overetch
+        endcapL -= self.process.overetch
+        etchholeSize += 2*self.process.overetch
+        area = springW*springL*nBeams + (endcapW*endcapL - etchholeSize*etchholeSize*nEtchHoles)*nEndCaps
+        self.extra_spring_area = area
+        self.extra_spring_k = k
+
+
     # Helper functions
     def extract_real_dimensions_from_drawn_dimensions(self, drawn_dimensions_filename):
         overetch = self.process.overetch
@@ -137,23 +159,24 @@ class GCA:
         drawn_dimensions = {}
         with open(drawn_dimensions_filename, 'r') as data:
             next(data)  # skip header row
-            for name, value in csv.reader(data):
+            for info in csv.reader(data):
+                name, value = info[:2]
                 drawn_dimensions[name] = float(value)
 
-        self.gf = drawn_dimensions["gf"] + 2*overetch
+        self.gf = drawn_dimensions["gf"] + 2*0.2e-6
         self.gb = drawn_dimensions["gb"] + 2*overetch
-        self.x_GCA = drawn_dimensions["x_GCA"] + 2*overetch
+        self.x_GCA = drawn_dimensions["x_GCA"] + 2*0.2e-6
         self.supportW = drawn_dimensions["supportW"] - 2*overetch
         self.supportL = drawn_dimensions["supportL"] - overetch
         self.Nfing = drawn_dimensions["Nfing"]
-        self.fingerW = drawn_dimensions["fingerW"] - 2*overetch
+        self.fingerW = drawn_dimensions["fingerW"] - 0.2e-6 - overetch
         self.fingerL = drawn_dimensions["fingerL"] - overetch
         self.fingerL_buffer = drawn_dimensions["fingerL_buffer"]
         self.spineW = drawn_dimensions["spineW"] - 2*overetch
         self.spineL = drawn_dimensions["spineL"] - 2*overetch
         self.etch_hole_size = drawn_dimensions["etch_hole_size"] + 2*overetch
         self.etch_hole_spacing = drawn_dimensions["etch_hole_spacing"] - 2*overetch
-        self.gapstopW = drawn_dimensions["gapstopW"] - 2*overetch
+        self.gapstopW = drawn_dimensions["gapstopW"] - 2*0.2e-6
         self.gapstopL_half = drawn_dimensions["gapstopL_half"] - overetch
         self.anchored_electrodeW = drawn_dimensions["anchored_electrodeW"] - 2*overetch
         self.anchored_electrodeL = drawn_dimensions["anchored_electrodeL"] - overetch
@@ -175,9 +198,10 @@ class GCA:
         self.fingerL_total = self.fingerL + self.fingerL_buffer
         self.num_etch_holes = round((self.spineL - self.etch_hole_spacing - self.process.overetch)/
                                     (self.etch_hole_spacing + self.etch_hole_size))
+        print(self.num_etch_holes)
         self.mainspineA = self.spineW*self.spineL - self.num_etch_holes*(self.etch_hole_size**2)
         self.spineA = self.mainspineA + self.Nfing*self.fingerL_total*self.fingerW + \
-                      2*self.gapstopW*self.gapstopL_half
+                      4*self.gapstopW*self.gapstopL_half
         if hasattr(self, "armW"):  # GCA includes arm (attached to inchworm motor)
             self.spineA += self.armW*self.armL
 

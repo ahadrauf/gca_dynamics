@@ -3,6 +3,7 @@ import numpy as np
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
 from scipy.io import loadmat
+from datetime import datetime
 from utils import *
 
 
@@ -51,7 +52,7 @@ def plot_data(fig, axs, pullin_V, pullin_avg, pullin_std, release_V, release_avg
     nx, ny = 3, 3
     for idx in range(nx):
         for idy in range(ny):
-            i = nx*idy+idx
+            i = nx*idy + idx
             # ax = plt.subplot(nx, ny, i+1)
             ax = axs[idy, idx]
             ax.errorbar(pullin_V[i], pullin_avg[i], pullin_std[i], fmt='b.', capsize=3)
@@ -66,6 +67,11 @@ def plot_data(fig, axs, pullin_V, pullin_avg, pullin_std, release_V, release_avg
 
 
 if __name__ == "__main__":
+    now = datetime.now()
+    name_clarifier = ""
+    timestamp = now.strftime("%Y%m%d_%H_%M_%S") + name_clarifier
+    print(timestamp)
+
     model = setup_model_pullin()
     t_span = [0, 100e-6]
     Fext = 0
@@ -87,14 +93,14 @@ if __name__ == "__main__":
     release_avg = []
     release_std = []
     labels = []
-    for i in range(1, len(fingerL_values)+1):
+    for i in range(1, len(fingerL_values) + 1):
         pullin_V.append(np.ndarray.flatten(data["V{}_Arr1".format(i)]))
         pullin_avg.append(np.ndarray.flatten(data["tmeas{}_Arr1".format(i)]))
         pullin_std.append(np.ndarray.flatten(data["err{}_Arr1".format(i)]))
         release_V.append(np.ndarray.flatten(data["V{}_Arr1_r".format(i)]))
         release_avg.append(np.ndarray.flatten(data["tmeas{}_Arr1_r".format(i)]))
         release_std.append(np.ndarray.flatten(data["err{}_Arr1_r".format(i)]))
-        labels.append(r"L=%0.1f$\mu$m" % (fingerL_values[i-1]*1e6))
+        labels.append(r"L=%0.1f$\mu$m"%(fingerL_values[i - 1]*1e6))
 
     plot_data(fig, axs, pullin_V, pullin_avg, pullin_std, release_V, release_avg, release_std, labels)
 
@@ -103,7 +109,7 @@ if __name__ == "__main__":
     # Pullin measurements
     for idy in range(len(fingerL_values)):
         fingerL = fingerL_values[idy]
-        model.gca.fingerL = fingerL-model.gca.process.overetch
+        model.gca.fingerL = fingerL - model.gca.process.overetch
         model.gca.update_dependent_variables()
 
         V_converged = []
@@ -131,7 +137,7 @@ if __name__ == "__main__":
 
         # ax = plt.subplot(nx, ny, idy+1)
         # plt.plot(V_converged, times_converged)
-        axs[idy // ny, idy % ny].plot(V_converged, times_converged)
+        axs[idy//ny, idy%ny].plot(V_converged, times_converged)
         # ax.text(0.8*ax.get_xlim()[-1], 0.8*ax.get_ylim()[-1], "w={}um\nL={}um".format(fingerW*1e6, fingerL*1e6))
         # ax.set_aspect(1.0/ax.get_data_ratio(), adjustable='box')
 
@@ -163,4 +169,6 @@ if __name__ == "__main__":
     #     # ax.set_aspect(1.0/ax.get_data_ratio(), adjustable='box')
 
     plt.tight_layout()
+    plt.savefig("figures/" + timestamp + ".png")
+    plt.savefig("figures/" + timestamp + ".eps")
     plt.show()

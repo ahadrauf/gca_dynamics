@@ -40,9 +40,9 @@ class Assembly:
 
 
 class AssemblyGCA(Assembly):
-    def __init__(self, **kwargs):
+    def __init__(self, drawn_dimensions_filename="fawn.csv", **kwargs):
         Assembly.__init__(self, **kwargs)
-        self.gca = GCA("fawn.csv")
+        self.gca = GCA(drawn_dimensions_filename=drawn_dimensions_filename)
         self.parts = [self.gca]
 
     def unzip_state(self, x):

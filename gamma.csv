@@ -1,0 +1,18 @@
+name, value  # This file shows the dimensions of the GCA's developed in the fawn layout (Daniel Contreras - c. 2017 or 2018?)
+gf, 5.193e-6
+gb, 7.37e-6
+x_GCA, 3.83e-6
+supportW, 3e-6
+supportL, 152.8e-6
+Nfing, 96
+fingerW, 5e-6
+fingerL, 76.4e-6
+fingerL_buffer, 10e-6
+spineW, 20e-6
+spineL, 1339.859e-6
+etch_hole_size, 8e-6
+etch_hole_spacing, 7.862e-6
+gapstopW, 10e-6
+gapstopL_half, 85e-6,  # Average of front and back gapstops (47.5; 122.5)
+anchored_electrodeW, 1096.45e-6
+anchored_electrodeL, 344.366e-6
