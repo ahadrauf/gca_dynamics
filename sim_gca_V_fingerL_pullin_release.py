@@ -54,7 +54,7 @@ def plot_data(fig, axs, pullin_V, pullin_avg, pullin_std, release_V, release_avg
             i = nx*idy+idx
             # ax = plt.subplot(nx, ny, i+1)
             ax = axs[idy, idx]
-            ax.errorbar(pullin_V[i], pullin_avg[i], pullin_std[i], fmt='b.', capsize=5)
+            ax.errorbar(pullin_V[i], pullin_avg[i], pullin_std[i], fmt='b.', capsize=3)
             # ax.errorbar(release_V[i], release_avg[i], release_std[i], fmt='r.', capsize=5)
             # ax.text(0.6*ax.get_xlim()[-1], 0.85*ax.get_ylim()[-1], labels[i])
             # ax.set_aspect(1.0/ax.get_data_ratio(), adjustable='box')
@@ -74,7 +74,7 @@ if __name__ == "__main__":
     fingerL_values = np.ndarray.flatten(data["LARR"])*1e-6  # Length = 9
     print(fingerL_values)
 
-    V_values = np.arange(20, 100, 5)
+    V_values = np.arange(20, 105, 5)
     # latexify(fig_width=6, columns=3)
     fig, axs = setup_plot(3, 3, x_label="Voltage (V)", y_label="Pull-in Time (us)")
     axs[2, 1].set_xlabel("Voltage (V)")
@@ -118,6 +118,7 @@ if __name__ == "__main__":
             V_test.append(V + 0.5)
             V_test.append(V + 1)
             V_test.append(V + 1.5)
+            V_test.append(V + 2.5)
         # (adds a lot of compute time, since failed simulations take time)
         for V in V_test:
             u = setup_inputs(V=V, Fext=Fext)
@@ -130,7 +131,7 @@ if __name__ == "__main__":
 
         # ax = plt.subplot(nx, ny, idy+1)
         # plt.plot(V_converged, times_converged)
-        axs[idy % ny, idy // ny].plot(V_converged, times_converged)
+        axs[idy // ny, idy % ny].plot(V_converged, times_converged)
         # ax.text(0.8*ax.get_xlim()[-1], 0.8*ax.get_ylim()[-1], "w={}um\nL={}um".format(fingerW*1e6, fingerL*1e6))
         # ax.set_aspect(1.0/ax.get_data_ratio(), adjustable='box')
 

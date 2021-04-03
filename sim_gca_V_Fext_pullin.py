@@ -37,72 +37,59 @@ def sim_gca(model, u, t_span, verbose=False):
     return sol
 
 
-def setup_plot(len_x, len_y, plt_title=None, x_label="", y_label=""):
-    fig, axs = plt.subplots(len_x, len_y)
+def setup_plot(plt_title=None):
+    fig = plt.figure()
     if plt_title is not None:
-        fig.suptitle(plt_title)
-
-    # fig.text(0.5, 0.04, x_label, ha='center')
-    # fig.text(0.04, 0.5, y_label, va='center', rotation='vertical')
-    return fig, axs
+        fig.title(plt_title)
+    ax = fig.get_axes()
+    return fig, ax
 
 
-def plot_data(fig, axs, pullin_V, pullin_avg, pullin_std, release_V, release_avg, release_std, labels):
-    nx, ny = 3, 3
-    for idx in range(nx):
-        for idy in range(ny):
-            i = nx*idy+idx
-            # ax = plt.subplot(nx, ny, i+1)
-            ax = axs[idx, idy]
-            plt.errorbar(pullin_V[i], pullin_avg[i], pullin_std[i], fmt='b.', capsize=5)
-            # ax.errorbar(release_V[i], release_avg[i], release_std[i], fmt='r.', capsize=5)
-            ax.text(0.8*ax.get_xlim()[-1], 0.85*ax.get_ylim()[-1], labels[i])
-            # ax.set_aspect(1.0/ax.get_data_ratio(), adjustable='box')
+def plot_data(fig, ax, Vs, ts, labels, colors, markers):
+    for i in range(len(Vs)):
+        plt.plot(Vs[i], ts[i], label=labels[i], )
+    plt.legend()
 
 
 if __name__ == "__main__":
     model = setup_model_pullin()
     t_span = [0, 100e-6]
-    Fext = 0
+    colors = ['k', 'r', 'b']
+    markers = ['x', 'o', '^']
 
     data = loadmat("data/craig_gamma_V_Fext_pullin.mat")
-    fingerL_values = np.ndarray.flatten(data["LARR"])*1e-6  # Length = 9
-    print(fingerL_values)
+    Fs = [0, 50e-6, 100e-6]
+    Vs = [data['V_0'], data['V_50'], data['V_100']]
+    ts = [data['F_0'], data['F_50'], data['F_100']]
 
     V_values = np.arange(20, 100, 5)
     # latexify(fig_width=6, columns=3)
-    fig, axs = setup_plot(3, 3, x_label="Voltage (V)", y_label="Pull-in Time (us)")
+    fig, ax = setup_plot()
 
-    pullin_V = []
-    pullin_avg = []
-    pullin_std = []
-    release_V = []
-    release_avg = []
-    release_std = []
     labels = []
-    for i in range(1, len(fingerL_values)+1):
-        pullin_V.append(np.ndarray.flatten(data["V{}_Arr1".format(i)]))
-        pullin_avg.append(np.ndarray.flatten(data["tmeas{}_Arr1".format(i)]))
-        pullin_std.append(np.ndarray.flatten(data["err{}_Arr1".format(i)]))
-        release_V.append(np.ndarray.flatten(data["V{}_Arr1_r".format(i)]))
-        release_avg.append(np.ndarray.flatten(data["tmeas{}_Arr1_r".format(i)]))
-        release_std.append(np.ndarray.flatten(data["err{}_Arr1_r".format(i)]))
-        labels.append(r"L=%0.1f$\mu$m" % (fingerL_values[i-1]*1e6))
+    for F in Fs:
+        labels.append(r"F=%d$\mu$N" % int(F*1e6))
 
-    plot_data(fig, axs, pullin_V, pullin_avg, pullin_std, release_V, release_avg, release_std, labels)
+    plot_data(fig, ax, Vs, ts, labels)
 
     nx, ny = 3, 3
 
     # Pullin measurements
-    for idy in range(len(fingerL_values)):
-        fingerL = fingerL_values[idy]
-        model.gca.fingerL = fingerL-model.gca.process.overetch
-        model.gca.update_dependent_variables()
+    for idy in range(len(Fs)):
+        Fext = Fs[idy]
 
         V_converged = []
         times_converged = []
 
-        V_test = np.sort(np.append(V_values, [pullin_V[idy], pullin_V[idy]+0.2]))  # Add some extra values to test
+        V_test = []
+        for V in V_values:
+            # V_test.append(V - 0.1)
+            V_test.append(V)
+            # V_test.append(V + 0.2)
+            V_test.append(V + 0.5)
+            V_test.append(V + 1)
+            V_test.append(V + 1.5)
+            V_test.append(V + 2.5)
         # (adds a lot of compute time, since failed simulations take time)
         for V in V_test:
             u = setup_inputs(V=V, Fext=Fext)
@@ -115,7 +102,7 @@ if __name__ == "__main__":
 
         # ax = plt.subplot(nx, ny, idy+1)
         # plt.plot(V_converged, times_converged)
-        axs[idy // ny, idy % ny].plot(V_converged, times_converged)
+        plt.plot(V_converged, times_converged)
         # ax.text(0.8*ax.get_xlim()[-1], 0.8*ax.get_ylim()[-1], "w={}um\nL={}um".format(fingerW*1e6, fingerL*1e6))
         # ax.set_aspect(1.0/ax.get_data_ratio(), adjustable='box')
 
