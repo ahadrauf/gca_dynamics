@@ -1,8 +1,9 @@
 # GCA Dynamics
 Dynamics characterization for a MEMS electrostatic inchworm motor and its gap closing actuators
 
-## Installation Requirements
-This code just required numpy, scipy, and matplotlib.
+## Installation
+This code just required numpy, scipy, and matplotlib. A good script to run first after setup
+is `python sim_gca_transient.py` to get a sense for what's going on.
 
 ## Code Structure
 This simulation model is meant to be modular, so you can easily swap between different layouts and/or

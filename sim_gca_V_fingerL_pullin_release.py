@@ -117,14 +117,15 @@ if __name__ == "__main__":
         # V_test = np.sort(np.append(V_values, [pullin_V[idy], pullin_V[idy]+0.2]))  # Add some extra values to test
         V_test = []
         V_values = pullin_V[idy]
-        for V in V_values:
-            # V_test.append(V - 0.1)
-            V_test.append(V)
-            # V_test.append(V + 0.2)
-            V_test.append(V + 0.5)
-            V_test.append(V + 1)
-            V_test.append(V + 2)
-            V_test.append(V + 3)
+        # for V in V_values:
+        #     # V_test.append(V - 0.1)
+        #     V_test.append(V)
+        #     # V_test.append(V + 0.2)
+        #     V_test.append(V + 0.5)
+        #     V_test.append(V + 1)
+        #     V_test.append(V + 2)
+        #     V_test.append(V + 3)
+        V_test = np.arange(min(V_values), max(V_values) + 3)
         # (adds a lot of compute time, since failed simulations take time)
         for V in V_test:
             u = setup_inputs(V=V, Fext=Fext)
@@ -133,13 +134,9 @@ if __name__ == "__main__":
             if len(sol.t_events[0]) > 0:
                 V_converged.append(V)
                 times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
-        print(times_converged)
+        print(fingerL, V_converged, times_converged)
 
-        # ax = plt.subplot(nx, ny, idy+1)
-        # plt.plot(V_converged, times_converged)
         axs[idy//ny, idy%ny].plot(V_converged, times_converged)
-        # ax.text(0.8*ax.get_xlim()[-1], 0.8*ax.get_ylim()[-1], "w={}um\nL={}um".format(fingerW*1e6, fingerL*1e6))
-        # ax.set_aspect(1.0/ax.get_data_ratio(), adjustable='box')
 
     # Release measurements
     # for idy in range(len(fingerL_values)):
