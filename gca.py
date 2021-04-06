@@ -23,8 +23,8 @@ class GCA:
         m_spring = (2*self.supportW*self.supportL + self.extra_spring_area)*t_SOI*density
         m_eff = m + m_spring/3
         # print(m, m_spring, 2*self.supportW*self.supportL, self.extra_spring_area)
-        m_total = m_eff + self.Nfing*self.process.density_fluid*(self.fingerL**2)*(self.process.t_SOI**2)/(
-                2*(self.fingerL + self.process.t_SOI))
+        m_total = m_eff + self.Nfing*self.process.density_fluid*(self.fingerL_overlap**2)*(self.process.t_SOI**2)/(
+                2*(self.fingerL_overlap + self.process.t_SOI))
         # print(m, m_spring/3, self.Nfing*self.process.density_fluid*(self.fingerL**2)*(self.process.t_SOI**2)/(
         #         2*(self.fingerL + self.process.t_SOI)))
 
@@ -44,24 +44,30 @@ class GCA:
     def Fes(self, x, u):
         x, xdot = self.unzip_state(x)
         V, Fext = self.unzip_input(u)
-        return self.Nfing*0.5*(V**2)*self.process.eps0*self.process.t_SOI*self.fingerL* \
-               (1/(self.gf - x)**2 - 1/(self.gb + x)**2)
+        eps = 1e-12
+        Ff = self.Nfing*0.5*(V**2)*self.process.eps0*self.process.t_SOI*self.fingerL_overlap/(self.gf - x)**2
+        multf = self.gf*self.k_fing/(self.gf*self.k_fing - 2*Ff + eps)
+        Fb = self.Nfing*0.5*(V**2)*self.process.eps0*self.process.t_SOI*self.fingerL_overlap/(self.gb + x)**2
+        multb = self.gb*self.k_fing/(self.gb*self.k_fing - 2*Fb + eps)
+        # return multf*Ff + multb*Fb
+        return Ff + Fb
 
     def Fk(self, x, u):
         x, xdot = self.unzip_state(x)
         # print(self.k_support*x, self.extra_spring_k*(x - self.x0[0]))
-        return self.k_support*x + self.extra_spring_k*(x - -385.33e-6)
+        return self.k_support*x  # + self.extra_spring_k*(x - (385.33e-6 + 2*self.process.overetch))
 
     def Fb(self, x, u):
         x, xdot = self.unzip_state(x)
         fingerW = self.fingerW
         fingerL = self.fingerL
+        fingerL_overlap = self.fingerL_overlap
         t_SOI = self.process.t_SOI
         gf = self.gf
         gb = self.gb
 
-        S1 = max(fingerL, t_SOI)
-        S2 = min(fingerL, t_SOI)
+        S1 = max(fingerL_overlap, t_SOI)
+        S2 = min(fingerL_overlap, t_SOI)
         beta = lambda eta: 1 - (1 - 0.42)*eta
 
         def bsf_calc1():
@@ -87,6 +93,25 @@ class GCA:
             t_SOI_primeb = t_SOI + 0.81*(1 + 0.94*self.process.mfp/(gb + x))*(gb + x)
             bsff = self.process.mu*self.Nfing*S1*(S2**3)*beta(S2/S1)*(1/(gf - x)**3)
             bsfb = self.process.mu*self.Nfing*S1*(S2**3)*beta(S2/S1)*(1/(gb + x)**3)
+            bsf_adjf = (4*(gf - x)**3*fingerW + 2*self.process.t_ox**3*t_SOI_primef)/(
+                    (gf - x)**3*fingerW + 2*self.process.t_ox**3*t_SOI_primef)
+            bsf_adjb = (4*(gb + x)**3*fingerW + 2*self.process.t_ox**3*t_SOI_primeb)/(
+                    (gb + x)**3*fingerW + 2*self.process.t_ox**3*t_SOI_primeb)
+            bsf = bsff*bsf_adjf + bsfb*bsf_adjb
+            return bsf
+
+        def bsf_calc4():
+            """
+            Based on T. Veijola, H. Kuisma, J. Lahdenperä, and T. Ryhänen, "Equivalent-circuit
+            model of the squeezed gas film in a silicon accelerometer," Sensors and Actuators
+            A: Physical, vol. 48, pp. 239-248, 1995.
+            """
+            t_SOI_primef = t_SOI + 0.81*(1 + 0.94*self.process.mfp/(gf - x))*(gf - x)
+            t_SOI_primeb = t_SOI + 0.81*(1 + 0.94*self.process.mfp/(gb + x))*(gb + x)
+            muf = self.process.mu / (1 + 9.638*np.power(self.process.mfp/(gf - x), 1.159))
+            mub = self.process.mu/(1 + 9.638*np.power(self.process.mfp/(gb + x), 1.159))
+            bsff = muf*self.Nfing*S1*(S2**3)*beta(S2/S1)*(1/(gf - x)**3)
+            bsfb = mub*self.Nfing*S1*(S2**3)*beta(S2/S1)*(1/(gb + x)**3)
             bsf_adjf = (4*(gf - x)**3*fingerW + 2*self.process.t_ox**3*t_SOI_primef)/(
                     (gf - x)**3*fingerW + 2*self.process.t_ox**3*t_SOI_primef)
             bsf_adjb = (4*(gb + x)**3*fingerW + 2*self.process.t_ox**3*t_SOI_primeb)/(
@@ -121,11 +146,9 @@ class GCA:
         Fes = self.Fes(x, u)/self.Nfing  # Fes for one finger!
 
         # Finger release dynamics
-        I_fing = (self.fingerW**3)*self.process.t_SOI/12
-        k_fing = 8*self.process.E*I_fing/(self.fingerL_total**3)
         m_fing = self.fingerW*self.fingerL*self.process.t_SOI*self.process.density
-        x_fing = Fes/k_fing
-        w1 = (1.875**2)*np.sqrt(self.process.E*I_fing/(self.process.density*self.process.t_SOI*
+        x_fing = Fes/self.k_fing
+        w1 = (1.875**2)*np.sqrt(self.process.E*self.I_fing/(self.process.density*self.process.t_SOI*
                                                        (self.fingerL_total**4)*self.fingerW))
         v_fing = w1*x_fing/2
 
@@ -155,6 +178,8 @@ class GCA:
     # Helper functions
     def extract_real_dimensions_from_drawn_dimensions(self, drawn_dimensions_filename):
         overetch = self.process.overetch
+        small_overetch = self.process.small_overetch
+        sothresh = self.process.small_overetch_threshold
 
         drawn_dimensions = {}
         with open(drawn_dimensions_filename, 'r') as data:
@@ -163,20 +188,20 @@ class GCA:
                 name, value = info[:2]
                 drawn_dimensions[name] = float(value)
 
-        self.gf = drawn_dimensions["gf"] + 2*0.2e-6
+        self.gf = drawn_dimensions["gf"] + 2*small_overetch if drawn_dimensions["gf"] < sothresh else drawn_dimensions["gf"] + 2*overetch
         self.gb = drawn_dimensions["gb"] + 2*overetch
-        self.x_GCA = drawn_dimensions["x_GCA"] + 2*0.2e-6
+        self.x_GCA = drawn_dimensions["x_GCA"] + 2*small_overetch if drawn_dimensions["x_GCA"] < sothresh else drawn_dimensions["x_GCA"] + 2*overetch
         self.supportW = drawn_dimensions["supportW"] - 2*overetch
         self.supportL = drawn_dimensions["supportL"] - overetch
         self.Nfing = drawn_dimensions["Nfing"]
-        self.fingerW = drawn_dimensions["fingerW"] - 0.2e-6 - overetch
+        self.fingerW = drawn_dimensions["fingerW"] - small_overetch - overetch if drawn_dimensions["gf"] < sothresh else drawn_dimensions["fingerW"] - 2*overetch
         self.fingerL = drawn_dimensions["fingerL"] - overetch
         self.fingerL_buffer = drawn_dimensions["fingerL_buffer"]
         self.spineW = drawn_dimensions["spineW"] - 2*overetch
         self.spineL = drawn_dimensions["spineL"] - 2*overetch
         self.etch_hole_size = drawn_dimensions["etch_hole_size"] + 2*overetch
         self.etch_hole_spacing = drawn_dimensions["etch_hole_spacing"] - 2*overetch
-        self.gapstopW = drawn_dimensions["gapstopW"] - 2*0.2e-6
+        self.gapstopW = drawn_dimensions["gapstopW"] - 2*small_overetch if drawn_dimensions["x_GCA"] < sothresh else drawn_dimensions["gapstopW"] - 2*overetch
         self.gapstopL_half = drawn_dimensions["gapstopL_half"] - overetch
         self.anchored_electrodeW = drawn_dimensions["anchored_electrodeW"] - 2*overetch
         self.anchored_electrodeL = drawn_dimensions["anchored_electrodeL"] - overetch
@@ -195,10 +220,13 @@ class GCA:
         if not hasattr(self, "k_support"):  # Might be overridden if taking data from papers
             self.k_support = 2*self.process.E*(self.supportW**3)*self.process.t_SOI/(self.supportL**3)
         self.gs = self.gf - self.x_GCA
+        self.fingerL_overlap = self.fingerL - self.process.overetch
         self.fingerL_total = self.fingerL + self.fingerL_buffer
+        self.I_fing = (self.fingerW**3)*self.process.t_SOI/12
+        self.k_fing = 8*self.process.E*self.I_fing/(self.fingerL_total**3)
+        print("k_fing", self.k_fing)
         self.num_etch_holes = round((self.spineL - self.etch_hole_spacing - self.process.overetch)/
                                     (self.etch_hole_spacing + self.etch_hole_size))
-        print(self.num_etch_holes)
         self.mainspineA = self.spineW*self.spineL - self.num_etch_holes*(self.etch_hole_size**2)
         self.spineA = self.mainspineA + self.Nfing*self.fingerL_total*self.fingerW + \
                       4*self.gapstopW*self.gapstopL_half

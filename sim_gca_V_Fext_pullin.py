@@ -27,7 +27,7 @@ def sim_gca(model, u, t_span, verbose=False):
     terminate_simulation = lambda t, x: model.terminate_simulation(t, x)
     terminate_simulation.terminal = True
 
-    sol = solve_ivp(f, t_span, x0, events=[terminate_simulation], dense_output=True, max_step=0.5e-6, min_step=0.05e-6)
+    sol = solve_ivp(f, t_span, x0, events=[terminate_simulation], dense_output=True, max_step=0.5e-6, method="LSODA")
     return sol
 
 
@@ -53,7 +53,7 @@ if __name__ == "__main__":
     print(timestamp)
 
     model = setup_model_pullin()
-    t_span = [0, 100e-6]
+    t_span = [0, 150e-6]
     colors = ['k', 'r', 'b']
     markers = ['x', 'o', '^']
     support_spring_widths = [0e-6, 5e-6, 6.04e-6]
@@ -67,6 +67,8 @@ if __name__ == "__main__":
 
     # latexify(fig_width=6, columns=3)
     fig, ax = setup_plot()
+    plt.xlabel("Voltage (V)")
+    plt.ylabel(r"Pull-in Time ($\mu$s)")
 
     labels = []
     for F in Fs:
@@ -82,10 +84,11 @@ if __name__ == "__main__":
         times_converged = []
 
         V_test = []
+        # V_values = np.arange(min(Vs[idy]), max(Vs[idy]))
         V_values = Vs[idy]
         for V in V_values:
-            V_test.append(V - 1.5)
-            V_test.append(V - 1)
+            # V_test.append(V - 1.5)
+            # V_test.append(V - 1)
             V_test.append(V)
             V_test.append(V + 0.5)
             V_test.append(V + 1)
@@ -100,13 +103,13 @@ if __name__ == "__main__":
 
         # (adds a lot of compute time, since failed simulations take time)
         for V in V_test:
-            u = setup_inputs(V=V, Fext=Fext)
+            u = setup_inputs(V=V, Fext=0.)
             sol = sim_gca(model, u, t_span)
 
             if len(sol.t_events[0]) > 0:
                 V_converged.append(V)
                 times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
-                # print(V, Fext, '|', sol.t_events[0][0]*1e6, 'us')
+                print(V, Fext, '|', sol.t_events[0][0]*1e6, 'us')
         print(times_converged)
 
         plt.plot(V_converged, times_converged, color=colors[idy])

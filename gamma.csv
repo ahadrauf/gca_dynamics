@@ -1,7 +1,7 @@
 name, value  # This file shows the dimensions of the GCA's developed in the fawn layout (Daniel Contreras - c. 2017 or 2018?)
-gf, 5.193e-6
-gb, 7.37e-6
-x_GCA, 3.83e-6
+gf, 5.233e-6, #2e-6+2*0.2e-6+2.833e-6
+gb, 7.35e-6, #9.75e-6 - (2e-6+2*0.2e-6)
+x_GCA, 4.233e-6, #2e-6+2*0.2e-6+1.833e-6
 supportW, 3e-6
 supportL, 152.8e-6
 Nfing, 96
