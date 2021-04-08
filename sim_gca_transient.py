@@ -83,14 +83,14 @@ def plot_solution(sol, t_sim, model, plt_title=None):
 if __name__ == "__main__":
     V = 40
     Fext = 50e-6
-    model = setup_model_pullin()#  V=V, Fext=Fext)  # Change for pullin/release
+    model = setup_model_release(V=V, Fext=Fext)  # Change for pullin/release
     model.gca.add_support_spring(springW=5e-6, springL=594.995e-6, nBeams=16,
                                  endcapW=22.889e-6, endcapL=49.441e-6,
                                  etchholeSize=8e-6, nEtchHoles=3, nEndCaps=8*2,
                                  k=Fext/(385.33e-6 + 2*model.gca.process.overetch))
     print(model.gca.k_support)
     print(Fext/(385.33e-6 + 2*model.gca.process.overetch))
-    u = setup_inputs(V=V, Fext=0.)  # Change V=V for pullin, V=0 for release
+    u = setup_inputs(V=0, Fext=0.)  # Change V=V for pullin, V=0 for release
     t_span = [0, 200e-6]
     sol = sim_gca(model, u, t_span)
     print('End time:', sol.t_events[0])
