@@ -1,7 +1,6 @@
 from process import SOI
 import numpy as np
-
-np.set_printoptions(precision=3)
+np.set_printoptions(precision=3, suppress=True)
 from scipy.integrate import quad
 import csv
 
@@ -43,24 +42,17 @@ class GCA:
         x, xdot = self.unzip_state(x)
         V, Fext = self.unzip_input(u)
 
-        print("Dimensions")
-        print(self.gf, self.gb, V, self.process.E)
-        print(self.fingerL, self.fingerL_buffer, self.fingerL_total, self.fingerW)
-        print(x, xdot, V, Fext)
-
         def Fes_calc1():
-            return self.Fescon * self.Nfing * 0.5 * (
-                    V**2) * self.process.eps0 * self.process.t_SOI * self.fingerL * \
+            return self.Nfing * 0.5 * V**2 * self.process.eps0 * self.process.t_SOI * self.fingerL * \
                    (1 / (self.gf - x)**2 - 1 / (self.gb + x)**2)
 
         def Fes_calc2():
             Estar = self.process.E / (1 - self.process.v**2)
             a = self.fingerL_buffer / self.fingerL_total
             gf, gb = self.gf - x, self.gb + x
-            beta = self.gb / self.gf
-            Vtilde = V * np.sqrt(6 * self.process.eps0 * self.fingerL_total**4 / (Estar * self.fingerW**3 * self.gf**3))
+            beta = gb / gf
+            Vtilde = V * np.sqrt(6 * self.process.eps0 * self.fingerL_total**4 / (Estar * self.fingerW**3 * gf**3))
             l = (Vtilde**2 * (2 / beta**3 + 2))**(0.25)
-            print(a, beta, Vtilde, l)
 
             A = np.array([[-a**2, -a**3, np.exp(-l * a), np.exp(l * a), np.sin(l * a), np.cos(l * a)],
                           [-2 * a, -3 * a**2, -l * np.exp(-l * a), l * np.exp(l * a), l * np.cos(l * a),
@@ -73,30 +65,19 @@ class GCA:
                           [0, 0, -l**3 * np.exp(-l), l**3 * np.exp(l), -l**3 * np.cos(l), l**3 * np.sin(l)]])
             b = np.array([(beta**3 - beta) / (2 * beta**3 + 2), 0, 0, 0, 0, 0])
             b2, b3, c0, c1, c2, c3 = np.linalg.pinv(A).dot(b)  # np.linalg.solve(A, b)
-            print(A, b, b2, b3, c0, c1, c2, c3)
 
-            y = lambda xi: (xi < a) * (self.gf * (b2 * xi**2 + b3 * xi**3)) + \
-                           (xi >= a) * (self.gf * (c0 * np.exp(-l * xi) + c1 * np.exp(l * xi) + c2 *
+            y = lambda xi: (xi < a) * (gf * (b2 * xi**2 + b3 * xi**3)) + \
+                           (xi >= a) * (gf * (c0 * np.exp(-l * xi) + c1 * np.exp(l * xi) + c2 *
                                                    np.sin(l * xi) + c3 * np.cos(l * xi) - b[0]))
 
-            # def y(xi):  # xi_tilde, not xi (just abbreviated for brevity)
-            #     if xi < a:
-            #         return self.gf * (b2 * xi**2 + b3 * xi**3)
-            #     else:
-            #         return self.gf * (
-            #                 c0 * np.exp(-l * xi) + c1 * np.exp(l * xi) + c2 * np.sin(l * xi) + c3 * np.cos(l * xi) - b[
-            #             0])
-
             dF_dx = lambda xi: self.Nfing * 0.5 * V**2 * self.process.eps0 * self.process.t_SOI * \
-                               (1 / (self.gf - y(xi / self.fingerL_total))**2 -
-                                1 / (self.gb + y(xi / self.fingerL_total))**2)
-
-            print("y values", y(0), y(a/2), y(a), y(2*a), y(1))
+                               (1 / (gf - y(xi / self.fingerL_total))**2 -
+                                1 / (gb + y(xi / self.fingerL_total))**2)
 
             Fes = quad(dF_dx, a * self.fingerL_total, self.fingerL_total)[0]
             return self.Fescon * Fes
 
-        print("Fes1: %0.3e, Fes2: %0.3e" % (Fes_calc1(), Fes_calc2()))
+        # print("Fes1: %0.3e, Fes2: %0.3e" % (Fes_calc1(), Fes_calc2()))
         if V == 0:  # for speed
             Fes = 0
         else:
@@ -170,7 +151,7 @@ class GCA:
             bsf = bsff * bsf_adjf + bsfb * bsf_adjb
             return bsf
 
-        bsf = bsf_calc2()
+        bsf = bsf_calc1()
 
         # Couette flow damping
         bcf = self.process.mu * self.spineA / self.process.t_ox
@@ -203,13 +184,14 @@ class GCA:
         x_fing = Fes / k_fing
         w1 = (1.875**2) * np.sqrt(self.process.E * I_fing / (self.process.density * self.process.t_SOI *
                                                              (self.fingerL_total**4) * self.fingerW))
+        print("Dimensions:", self.fingerL, self.k_support, V, x[0], x[1])
         print("masses: ", m_fing, k_fing / w1**2)
         v_fing = w1 * x_fing
 
         # Spine axial spring compression
         k_spine = self.process.E * (self.process.t_SOI * self.spineW) / self.spineL
-        # m_spine = self.mainspineA*self.process.t_SOI*self.process.density
-        m_spine = self.spineW * self.spineL * self.process.t_SOI * self.process.density
+        m_spine = self.mainspineA*self.process.t_SOI*self.process.density
+        # m_spine = self.spineW * self.spineL * self.process.t_SOI * self.process.density
         x_spine = self.Nfing * Fes / k_spine
         v_spine = x_spine * np.sqrt(k_spine / m_spine)
 
@@ -234,7 +216,7 @@ class GCA:
         self.gb = drawn_dimensions["gb"] + 2 * overetch
         self.x_GCA = drawn_dimensions["x_GCA"] + 2 * overetch
         self.supportW = drawn_dimensions["supportW"] - 2 * overetch
-        self.supportL = drawn_dimensions["supportL"] - overetch
+        self.supportL = drawn_dimensions["supportL"]  # - overetch
         self.Nfing = drawn_dimensions["Nfing"]
         self.fingerW = drawn_dimensions["fingerW"] - 2 * overetch
         self.fingerL = drawn_dimensions["fingerL"] - overetch

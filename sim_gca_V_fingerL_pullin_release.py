@@ -1,5 +1,6 @@
 from assembly import AssemblyGCA
 import numpy as np
+np.set_printoptions(precision=3, suppress=True)
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
 from scipy.io import loadmat, savemat
@@ -9,7 +10,7 @@ from utils import *
 
 def setup_model_pullin():
     model = AssemblyGCA()
-    model.gca.x0 = model.gca.x0_pullin()
+    # model.gca.x0 = model.gca.x0_pullin()
     model.gca.terminate_simulation = model.gca.pulled_in
     return model
 
@@ -17,8 +18,8 @@ def setup_model_pullin():
 def setup_model_release(**kwargs):
     u = [kwargs["V"], kwargs["Fext"]]
     model = AssemblyGCA()
-    model.gca.k_support = 10.303975
-    model.gca.x0 = model.gca.x0_release(u)
+    # model.gca.k_support = 10.303975
+    # model.gca.x0 = model.gca.x0_release(u)
     model.gca.terminate_simulation = model.gca.released
     return model
 
@@ -115,6 +116,7 @@ if __name__ == "__main__":
     #     fingerL = fingerL_values[idy]
     #     model.gca.fingerL = fingerL - model.gca.process.overetch
     #     model.gca.update_dependent_variables()
+    #     model.gca.x0 = model.gca.x0_pullin()
     #
     #     V_converged = []
     #     times_converged = []
@@ -161,6 +163,8 @@ if __name__ == "__main__":
             model = setup_model_release(V=V, Fext=Fext)
             model.gca.fingerL = fingerL-model.gca.process.overetch
             model.gca.update_dependent_variables()
+            u = [V, Fext]
+            model.gca.x0 = model.gca.x0_release(u)
             u = setup_inputs(V=0, Fext=Fext)  # Changed for release
             sol = sim_gca(model, u, t_span)
 
