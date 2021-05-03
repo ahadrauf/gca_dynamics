@@ -1,10 +1,12 @@
 import numpy as np
 from gca import GCA
+from process import SOI
 
 
 class Assembly:
-    def __init__(self, **kwargs):
+    def __init__(self, process, **kwargs):
         self.parts = []
+        self.process = process
 
     def x0(self):
         return np.hstack([part.x0 for part in self.parts])
@@ -40,9 +42,9 @@ class Assembly:
 
 
 class AssemblyGCA(Assembly):
-    def __init__(self, drawn_dimensions_filename="fawn.csv", **kwargs):
-        Assembly.__init__(self, **kwargs)
-        self.gca = GCA(drawn_dimensions_filename=drawn_dimensions_filename)
+    def __init__(self, drawn_dimensions_filename="fawn.csv", process=SOI(), **kwargs):
+        Assembly.__init__(self, process=process, **kwargs)
+        self.gca = GCA(drawn_dimensions_filename=drawn_dimensions_filename, process=process)
         self.parts = [self.gca]
 
     def unzip_state(self, x):

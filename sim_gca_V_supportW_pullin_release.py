@@ -50,12 +50,10 @@ def setup_plot(len_x, len_y, plt_title=None, x_label="", y_label=""):
 
 
 def plot_data(fig, axs, pullin_V, pullin_avg, pullin_std, release_V, release_avg, release_std, labels):
-    nx, ny = 3, 3
+    nx, ny = 4, 2
     for idx in range(nx):
         for idy in range(ny):
-            # i = nx*idy + idx
-            # ax = axs[idy, idx]
-            i = ny * idx + idy
+            i = ny*idx + idy
             print(idx, idy, i)
             ax = axs[idx, idy]
             # ax.errorbar(pullin_V[i], pullin_avg[i], pullin_std[i], fmt='b.', capsize=3)
@@ -69,22 +67,23 @@ def plot_data(fig, axs, pullin_V, pullin_avg, pullin_std, release_V, release_avg
 
 if __name__ == "__main__":
     now = datetime.now()
-    name_clarifier = "_V_fingerL_pullin_normalFes_fixedKsupport"
+    name_clarifier = "_V_supportW_release"
     timestamp = now.strftime("%Y%m%d_%H_%M_%S") + name_clarifier
     print(timestamp)
 
     model = setup_model_pullin()
-    t_span = [0, 100e-6]
+    t_span = [0, 300e-6]
     Fext = 0
 
     data = loadmat("data/20180208_fawn_gca_V_fingerL_pullin_release.mat")
-    fingerL_values = np.ndarray.flatten(data["LARR"])*1e-6  # Length = 9
+    # fingerL_values = np.ndarray.flatten(data["LARR"])*1e-6  # Length = 9
+    springW_values = np.array([2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5])*1e-6
 
     V_values = np.arange(20, 105, 5)
     # latexify(fig_width=6, columns=3)
-    fig, axs = setup_plot(3, 3, x_label="Voltage (V)", y_label="Pull-in Time (us)")
-    axs[2, 1].set_xlabel("Voltage (V)")
-    axs[1, 0].set_ylabel("Time (us)")
+    fig, axs = setup_plot(4, 2, x_label="Voltage (V)", y_label="Pull-in Time (us)")
+    # axs[2, 1].set_xlabel("Voltage (V)")
+    # axs[1, 0].set_ylabel("Time (us)")
 
     pullin_V = []
     pullin_avg = []
@@ -93,14 +92,14 @@ if __name__ == "__main__":
     release_avg = []
     release_std = []
     labels = []
-    for i in range(1, len(fingerL_values) + 1):
-        pullin_V.append(np.ndarray.flatten(data["V{}_Arr1".format(i)]))
-        pullin_avg.append(np.ndarray.flatten(data["tmeas{}_Arr1".format(i)]))
-        pullin_std.append(np.ndarray.flatten(data["err{}_Arr1".format(i)]))
-        release_V.append(np.ndarray.flatten(data["V{}_Arr1_r".format(i)]))
-        release_avg.append(np.ndarray.flatten(data["tmeas{}_Arr1_r".format(i)]))
-        release_std.append(np.ndarray.flatten(data["err{}_Arr1_r".format(i)]))
-        labels.append(r"L=%0.1f$\mu$m"%(fingerL_values[i - 1]*1e6))
+    for i in range(1, len(springW_values) + 1):
+        pullin_V.append(np.ndarray.flatten(data["V{}_Arr2".format(i)]))
+        pullin_avg.append(np.ndarray.flatten(data["tmeas{}_Arr2".format(i)]))
+        pullin_std.append(np.ndarray.flatten(data["err{}_Arr2".format(i)]))
+        release_V.append(np.ndarray.flatten(data["V{}_Arr2_r".format(i)]))
+        release_avg.append(np.ndarray.flatten(data["tmeas{}_Arr2_r".format(i)]))
+        release_std.append(np.ndarray.flatten(data["err{}_Arr2_r".format(i)]))
+        labels.append(r"$w_{s}$=%0.1f$\mu$m"%(springW_values[i - 1]*1e6))
         # if i < len(fingerL_values):
         #     labels.append("$L_{ol}$=%0.1f$L_{0}$" % (0.1*i+0.1))
         # else:
@@ -108,12 +107,13 @@ if __name__ == "__main__":
 
     plot_data(fig, axs, pullin_V, pullin_avg, pullin_std, release_V, release_avg, release_std, labels)
 
-    nx, ny = 3, 3
+    nx, ny = 4, 2
 
     # Pullin measurements
-    # for idy in range(len(fingerL_values)):
-    #     fingerL = fingerL_values[idy]
-    #     model.gca.fingerL = fingerL - model.gca.process.overetch
+    # for idy in range(len(springW_values)):
+    #     springW = springW_values[idy]
+    #     # model.gca.fingerL = fingerL - model.gca.process.overetch
+    #     model.gca.supportW = springW - 2 * model.gca.process.overetch
     #     model.gca.update_dependent_variables()
     #
     #     V_converged = []
@@ -140,27 +140,27 @@ if __name__ == "__main__":
     #         if len(sol.t_events[0]) > 0:
     #             V_converged.append(V)
     #             times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
-    #     print(fingerL, V_converged, times_converged)
+    #     print(springW, V_converged, times_converged)
     #
     #     axs[idy//ny, idy%ny].plot(V_converged, times_converged)
 
     # Release measurements
-    for idy in range(len(fingerL_values)):
-        fingerL = fingerL_values[idy]
+    for idy in range(len(springW_values)):
+        springW = springW_values[idy]
 
         V_converged = []
         times_converged = []
 
-        # V_test = V_values
         V_values = release_V[idy]
         V_test = V_values
         # V_test = np.arange(min(V_values), max(V_values) + 3)
         # V_test = np.sort(np.append(V_values, [release_V[idy], release_V[idy]+0.2]))  # Add some extra values to test
         # (adds a lot of compute time, since failed simulations take time)
         for V in V_test:
-            model = setup_model_release(V=V, Fext=Fext)
-            model.gca.fingerL = fingerL-model.gca.process.overetch
+            model.gca.supportW = springW - 2*model.gca.process.overetch
             model.gca.update_dependent_variables()
+            model = setup_model_release(V=V, Fext=Fext)
+            # model.gca.fingerL = fingerL-model.gca.process.overetch
             u = setup_inputs(V=0, Fext=Fext)  # Changed for release
             sol = sim_gca(model, u, t_span)
 
@@ -168,11 +168,14 @@ if __name__ == "__main__":
                 V_converged.append(V)
                 times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
         print(times_converged)
-
-        # ax = plt.subplot(nx, ny, idy+1)
         axs[idy//ny, idy%ny].plot(V_converged, times_converged, 'r')
-        # ax.text(0.8*ax.get_xlim()[-1], 0.8*ax.get_ylim()[-1], "w={}um\nL={}um".format(fingerW*1e6, fingerL*1e6))
-        # ax.set_aspect(1.0/ax.get_data_ratio(), adjustable='box')
+
+    # add a big axis, hide frame
+    fig.add_subplot(111, frameon=False)
+    # hide tick and tick label of the big axis
+    plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
+    plt.xlabel("Voltage (V)")
+    plt.ylabel("Time (us)")
 
     plt.tight_layout()
     plt.savefig("figures/" + timestamp + ".png")
