@@ -3,6 +3,7 @@ import numpy as np
 np.set_printoptions(precision=3, suppress=True)
 from scipy.integrate import quad
 import csv
+import matplotlib.pyplot as plt
 
 
 class GCA:
@@ -50,32 +51,51 @@ class GCA:
             Estar = self.process.E / (1 - self.process.v**2)
             a = self.fingerL_buffer / self.fingerL_total
             gf, gb = self.gf - x, self.gb + x
+            if gf < 0:
+                print("gf < 0", gf, self.gf, x)
             beta = gb / gf
-            Vtilde = V * np.sqrt(6 * self.process.eps0 * self.fingerL_total**4 / (Estar * self.fingerW**3 * gf**3))
+            Vtilde = V * np.sqrt(6 * self.process.eps0 * self.fingerL_total**4 / (Estar * self.fingerW**3 * gf**3 + 1e-9))
             l = (Vtilde**2 * (2 / beta**3 + 2))**(0.25)
 
-            A = np.array([[-a**2, -a**3, np.exp(-l * a), np.exp(l * a), np.sin(l * a), np.cos(l * a)],
-                          [-2 * a, -3 * a**2, -l * np.exp(-l * a), l * np.exp(l * a), l * np.cos(l * a),
-                           -l * np.sin(l * a)],
-                          [-2, -6 * a, l**2 * np.exp(-l * a), l**2 * np.exp(l * a), -l**2 * np.sin(l * a),
-                           -l**2 * np.cos(l * a)],
-                          [0, -6, -l**3 * np.exp(-l * a), l**3 * np.exp(l * a), -l**3 * np.cos(l * a),
-                           l**3 * np.sin(l * a)],
-                          [0, 0, l**2 * np.exp(-l), l**2 * np.exp(l), -l**2 * np.sin(l), -l**2 * np.cos(l)],
-                          [0, 0, -l**3 * np.exp(-l), l**3 * np.exp(l), -l**3 * np.cos(l), l**3 * np.sin(l)]])
-            b = np.array([(beta**3 - beta) / (2 * beta**3 + 2), 0, 0, 0, 0, 0])
-            b2, b3, c0, c1, c2, c3 = np.linalg.pinv(A).dot(b)  # np.linalg.solve(A, b)
+            try:
+                A = np.array([[-a**2, -a**3, np.exp(-l * a), np.exp(l * a), np.sin(l * a), np.cos(l * a)],
+                              [-2 * a, -3 * a**2, -l * np.exp(-l * a), l * np.exp(l * a), l * np.cos(l * a),
+                               -l * np.sin(l * a)],
+                              [-2, -6 * a, l**2 * np.exp(-l * a), l**2 * np.exp(l * a), -l**2 * np.sin(l * a),
+                               -l**2 * np.cos(l * a)],
+                              [0, -6, -l**3 * np.exp(-l * a), l**3 * np.exp(l * a), -l**3 * np.cos(l * a),
+                               l**3 * np.sin(l * a)],
+                              [0, 0, l**2 * np.exp(-l), l**2 * np.exp(l), -l**2 * np.sin(l), -l**2 * np.cos(l)],
+                              [0, 0, -l**3 * np.exp(-l), l**3 * np.exp(l), -l**3 * np.cos(l), l**3 * np.sin(l)]])
+                b = np.array([(beta**3 - beta) / (2 * beta**3 + 2), 0, 0, 0, 0, 0])
+                b2, b3, c0, c1, c2, c3 = np.linalg.solve(A, b)  # np.linalg.pinv(A).dot(b)
+            except Exception as e:
+                print("Exception occured:", a, gf, gb, beta, Vtilde, l)
 
-            y = lambda xi: (xi < a) * (gf * (b2 * xi**2 + b3 * xi**3)) + \
-                           (xi >= a) * (gf * (c0 * np.exp(-l * xi) + c1 * np.exp(l * xi) + c2 *
-                                                   np.sin(l * xi) + c3 * np.cos(l * xi) - b[0]))
+            # y = lambda xi: (xi < a) * (gf * (b2 * xi**2 + b3 * xi**3)) + \
+            #                (xi >= a) * (gf * (c0 * np.exp(-l * xi) + c1 * np.exp(l * xi) + c2 *
+            #                                        np.sin(l * xi) + c3 * np.cos(l * xi) - b[0]))
+            y = lambda xi: (gf * (c0 * np.exp(-l * xi) + c1 * np.exp(l * xi) + c2 *
+                                  np.sin(l * xi) + c3 * np.cos(l * xi) - b[0]))
 
             dF_dx = lambda xi: self.Nfing * 0.5 * V**2 * self.process.eps0 * self.process.t_SOI * \
                                (1 / (gf - y(xi / self.fingerL_total))**2 -
                                 1 / (gb + y(xi / self.fingerL_total))**2)
+            try:
+                Fes = quad(dF_dx, a * self.fingerL_total, self.fingerL_total)[0]
+            except Exception as e:
+                Fes = 0
+                X = np.arange(a*self.fingerL_total, self.fingerL_total)
+                Y = [dF_dx(x/self.fingerL_total) for x in X]
+                plt.plot(X, Y)
+                wait = input("Press Enter to continue.")
 
-            Fes = quad(dF_dx, a * self.fingerL_total, self.fingerL_total)[0]
-            return self.Fescon * Fes
+            h = gf
+            t = self.fingerL
+            w = self.process.t_SOI
+            Fescon = 1 + h / np.pi / w + h / np.pi / w * np.log(2 * np.pi * w / h) + h / np.pi / w * np.log(
+                1 + 2 * t / h + 2 * np.sqrt(t / h + t ** 2 / h ** 2))
+            return Fescon * Fes
 
         # print("Fes1: %0.3e, Fes2: %0.3e" % (Fes_calc1(), Fes_calc2()))
         if V == 0:  # for speed
@@ -184,21 +204,23 @@ class GCA:
         x_fing = Fes / k_fing
         w1 = (1.875**2) * np.sqrt(self.process.E * I_fing / (self.process.density * self.process.t_SOI *
                                                              (self.fingerL_total**4) * self.fingerW))
+        # m_fing = k_fing/w1**2
         print("Dimensions:", self.fingerL, self.k_support, V, x[0], x[1])
-        print("masses: ", m_fing, k_fing / w1**2)
         v_fing = w1 * x_fing
 
         # Spine axial spring compression
         k_spine = self.process.E * (self.process.t_SOI * self.spineW) / self.spineL
-        m_spine = self.mainspineA*self.process.t_SOI*self.process.density
+        m_spine = self.mainspineA * self.process.t_SOI * self.process.density
         # m_spine = self.spineW * self.spineL * self.process.t_SOI * self.process.density
         x_spine = self.Nfing * Fes / k_spine
         v_spine = x_spine * np.sqrt(k_spine / m_spine)
 
-        print("k_spine", k_spine, "k_fing", k_fing)
+        # print("k_spine", k_spine, "k_fing", k_fing)
+        print("masses: ", m_fing, k_fing / w1**2, m_spine)
 
         # Conservation of linear momentum
         v0 = (self.Nfing * m_fing * v_fing + m_spine * v_spine) / (self.Nfing * m_fing + m_spine)
+        # v0 = np.sqrt((self.Nfing*m_fing*v_fing**2 + m_spine*v_spine**2)/(self.Nfing*m_fing + m_spine))
         print('Release values (Fes, v_fing, v_spine, v0):', Fes, v_fing, v_spine, v0)
         return np.array([self.x_GCA, -v0])
 
@@ -242,7 +264,8 @@ class GCA:
 
     def update_dependent_variables(self):
         # if not hasattr(self, "k_support"):  # Might be overridden if taking data from papers
-        self.k_support = 2 * self.process.E * (self.supportW**3) * self.process.t_SOI / (self.supportL**3)
+        Estar = self.process.E / (1 - self.process.v**2)
+        self.k_support = 2 * Estar * (self.supportW**3) * self.process.t_SOI / (self.supportL**3)
         self.gs = self.gf - self.x_GCA
         self.fingerL_total = self.fingerL + self.fingerL_buffer
         self.num_etch_holes = round((self.spineL - self.etch_hole_spacing - self.process.overetch) /
