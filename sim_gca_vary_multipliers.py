@@ -20,7 +20,8 @@ def setup_model_release(**kwargs):
     # model.gca.k_support = 10.303975
     if "Fescon" in kwargs:
         model.gca.Fescon = kwargs["Fescon"]
-        print('hi')
+    if "Fkcon" in kwargs:
+        model.gca.Fkcon = kwargs["Fkcon"]
     model.gca.x0 = model.gca.x0_release(u)
     model.gca.terminate_simulation = model.gca.released
     return model
@@ -38,7 +39,7 @@ def sim_gca(model, u, t_span, verbose=False):
     terminate_simulation = lambda t, x: model.terminate_simulation(t, x)
     terminate_simulation.terminal = True
 
-    sol = solve_ivp(f, t_span, x0, events=[terminate_simulation], dense_output=True, max_step=0.5e-6) #, method="LSODA")
+    sol = solve_ivp(f, t_span, x0, events=[terminate_simulation], dense_output=True, max_step=0.25e-6) #, method="LSODA")
     return sol
 
 
@@ -121,7 +122,7 @@ if __name__ == "__main__":
             x_converged.append(mcon)
             times_converged.append(sol.t_events[0][0] * 1e6)  # us conversion
     axs[0, 0].plot(x_converged, times_converged, 'r')
-    axs[0, 0].legend(["Pullin", "Release"])
+    # axs[0, 0].legend(["Pull-in", "Release"])
     axs[0, 0].set_title("Varying Mass")
     axs[0, 0].axvline(1., color='k', linestyle='--')
 
@@ -151,7 +152,7 @@ if __name__ == "__main__":
             x_converged.append(Fescon)
             times_converged.append(sol.t_events[0][0] * 1e6)  # us conversion
     axs[0, 1].plot(x_converged, times_converged, 'r')
-    axs[0, 1].legend(["Pullin", "Release"])
+    # axs[0, 1].legend(["Pull-in", "Release"])
     axs[0, 1].set_title(r"Varying $F_{es}$")
     axs[0, 1].axvline(1., color='k', linestyle='--')
 
@@ -183,7 +184,7 @@ if __name__ == "__main__":
             x_converged.append(Fbcon)
             times_converged.append(sol.t_events[0][0] * 1e6)  # us conversion
     axs[1, 0].plot(x_converged, times_converged, 'r')
-    axs[1, 0].legend(["Pullin", "Release"])
+    # axs[1, 0].legend(["Pull-in", "Release"])
     axs[1, 0].set_title(r"Varying $F_b$")
     axs[1, 0].axvline(1., color='k', linestyle='--')
 
@@ -200,24 +201,25 @@ if __name__ == "__main__":
         if len(sol.t_events[0]) > 0:
             x_converged.append(Fkcon)
             times_converged.append(sol.t_events[0][0] * 1e6)  # us conversion
-    axs[1, 1].plot(x_converged, times_converged, 'b')
+    l1 = axs[1, 1].plot(x_converged, times_converged, 'b')
 
     # Release
     x_converged = []
     times_converged = []
     for Fkcon in Fkcon_range:
-        model = setup_model_release(V=V, Fext=Fext)
-        model.gca.Fkcon = Fkcon
+        model = setup_model_release(V=V, Fext=Fext, Fkcon=Fkcon)
+        # model.gca.Fkcon = Fkcon
         u = setup_inputs(V=0., Fext=Fext)
         sol = sim_gca(model, u, t_span)
 
         if len(sol.t_events[0]) > 0:
             x_converged.append(Fkcon)
             times_converged.append(sol.t_events[0][0] * 1e6)  # us conversion
-    axs[1, 1].plot(x_converged, times_converged, 'r')
-    axs[1, 1].legend(["Pullin", "Release"])
+    l2 = axs[1, 1].plot(x_converged, times_converged, 'r')
+    axs[1, 1].legend(["Pull-in", "Release"])
     axs[1, 1].set_title(r"Varying $F_k$")
     axs[1, 1].axvline(1., color='k', linestyle='--')
+
 
     plt.tight_layout()
     plt.savefig("figures/" + timestamp + ".png")

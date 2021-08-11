@@ -1,5 +1,6 @@
 from assembly import AssemblyGCA
 import numpy as np
+
 np.set_printoptions(precision=3, suppress=True)
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
@@ -13,7 +14,7 @@ def setup_model_pullin():
     model = AssemblyGCA()
     # model.gca.x0 = model.gca.x0_pullin()
     model.gca.terminate_simulation = model.gca.pulled_in
-    model.gca.Fescon = 1.1
+    # model.gca.Fescon = 1.1
     return model
 
 
@@ -23,7 +24,7 @@ def setup_model_release(**kwargs):
     # model.gca.k_support = 10.303975
     # model.gca.x0 = model.gca.x0_release(u)
     model.gca.terminate_simulation = model.gca.released
-    model.gca.Fescon = 1.1
+    # model.gca.Fescon = 1.1
     return model
 
 
@@ -39,7 +40,8 @@ def sim_gca(model, u, t_span, verbose=False):
     terminate_simulation = lambda t, x: model.terminate_simulation(t, x)
     terminate_simulation.terminal = True
 
-    sol = solve_ivp(f, t_span, x0, events=[terminate_simulation], dense_output=True, max_step=0.5e-6) #, method="LSODA")
+    sol = solve_ivp(f, t_span, x0, events=[terminate_simulation], dense_output=True,
+                    max_step=0.25e-6)  # , method="LSODA")
     return sol
 
 
@@ -59,16 +61,14 @@ def plot_data(fig, axs, pullin_V, pullin_avg, pullin_std, release_V, release_avg
         for idy in range(ny):
             # i = nx*idy + idx
             # ax = axs[idy, idx]
-            i = ny * idx + idy
-            print(idx, idy, i)
+            i = ny*idx + idy
+            # print(idx, idy, i)  # Confirms that I've ordered the data plots correctly
             ax = axs[idx, idy]
             ax.errorbar(pullin_V[i], pullin_avg[i], pullin_std[i], fmt='b.', capsize=3)
             ax.errorbar(release_V[i], release_avg[i], release_std[i], fmt='r.', capsize=3)
             ax.annotate(labels[i], xy=(1, 1), xycoords='axes fraction', fontsize=10,
                         xytext=(-2, -2), textcoords='offset points',
                         ha='right', va='top')
-
-    # plt.legend()
 
 
 if __name__ == "__main__":
@@ -78,7 +78,7 @@ if __name__ == "__main__":
     print(timestamp)
 
     model = setup_model_pullin()
-    t_span = [0, 100e-6]
+    t_span = [0, 200e-6]
     Fext = 0
 
     data = loadmat("data/20180208_fawn_gca_V_fingerL_pullin_release.mat")
@@ -105,14 +105,11 @@ if __name__ == "__main__":
         release_avg.append(np.ndarray.flatten(data["tmeas{}_Arr1_r".format(i)]))
         release_std.append(np.ndarray.flatten(data["err{}_Arr1_r".format(i)]))
         labels.append(r"L=%0.1f$\mu$m"%(fingerL_values[i - 1]*1e6))
-        # if i < len(fingerL_values):
-        #     labels.append("$L_{ol}$=%0.1f$L_{0}$" % (0.1*i+0.1))
-        # else:
-        #     labels.append(r"$L_{ol}=L_{0}$=%0.1f$\mu$m"%(fingerL_values[i - 1]*1e6))
 
     plot_data(fig, axs, pullin_V, pullin_avg, pullin_std, release_V, release_avg, release_std, labels)
 
     nx, ny = 3, 3
+    legend_pullin, legend_release = None, None
 
     # Pullin measurements
     for idy in range(len(fingerL_values)):
@@ -127,6 +124,7 @@ if __name__ == "__main__":
         # V_test = np.sort(np.append(V_values, [pullin_V[idy], pullin_V[idy]+0.2]))  # Add some extra values to test
         V_test = []
         V_values = pullin_V[idy]
+        # V_test = list(np.arange(min(V_values), max(V_values) + 1, 1.))
         for V in V_values:
             # V_test.append(V - 0.1)
             V_test.append(V)
@@ -135,9 +133,6 @@ if __name__ == "__main__":
             # V_test.append(V + 1)
             # V_test.append(V + 1.5)
             # V_test.append(V + 2)
-        # V_test = np.arange(min(V_values), max(V_values) + 3)
-        # V_test = V_values
-        # (adds a lot of compute time, since failed simulations take time)
         for V in V_test:
             u = setup_inputs(V=V, Fext=Fext)
             sol = sim_gca(model, u, t_span)
@@ -147,7 +142,9 @@ if __name__ == "__main__":
                 times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
         print(fingerL, V_converged, times_converged)
 
-        axs[idy//ny, idy%ny].plot(V_converged, times_converged)
+        line,  = axs[idy//ny, idy%ny].plot(V_converged, times_converged)
+        if idy == ny - 1:
+            legend_pullin = line
 
     # Release measurements
     for idy in range(len(fingerL_values)):
@@ -156,15 +153,12 @@ if __name__ == "__main__":
         V_converged = []
         times_converged = []
 
-        # V_test = V_values
         V_values = release_V[idy]
         V_test = V_values
-        # V_test = np.arange(min(V_values), max(V_values) + 3)
-        # V_test = np.sort(np.append(V_values, [release_V[idy], release_V[idy]+0.2]))  # Add some extra values to test
-        # (adds a lot of compute time, since failed simulations take time)
+        # V_test = list(np.arange(min(V_values), max(V_values) + 1, 1.))
         for V in V_test:
             model = setup_model_release(V=V, Fext=Fext)
-            model.gca.fingerL = fingerL-model.gca.process.overetch
+            model.gca.fingerL = fingerL - model.gca.process.overetch
             model.gca.update_dependent_variables()
             u = [V, Fext]
             model.gca.x0 = model.gca.x0_release(u)
@@ -176,10 +170,10 @@ if __name__ == "__main__":
                 times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
         print(times_converged)
 
-        # ax = plt.subplot(nx, ny, idy+1)
-        axs[idy//ny, idy%ny].plot(V_converged, times_converged, 'r')
-        # ax.text(0.8*ax.get_xlim()[-1], 0.8*ax.get_ylim()[-1], "w={}um\nL={}um".format(fingerW*1e6, fingerL*1e6))
-        # ax.set_aspect(1.0/ax.get_data_ratio(), adjustable='box')
+        # axs[idy//ny, idy%ny].plot(V_converged, times_converged, 'r')
+        line,  = axs[idy//ny, idy%ny].plot(V_converged, times_converged, 'r')
+        if idy == ny - 1:
+            legend_release = line
 
         # Calculate the r2 score
         actual = []
@@ -191,12 +185,10 @@ if __name__ == "__main__":
                 idx = np.where(V_converged == V)[0][0]
                 pred.append(times_converged[idx])
         r2 = r2_score(actual, pred)
-        # actual_mean = np.mean(actual)
-        # print(actual, pred, actual_mean)
-        # SSres = sum([(x-y)**2 for x, y in zip(actual, pred)])
-        # SStot = sum([(x-actual_mean)**2 for x in actual])
-        # r2 = 1-SSres/SStot
-        print("R2 score for L=", fingerL, "=", r2) #, SSres, SStot)
+        print("R2 score for L=", fingerL, "=", r2)
+
+    # axs[0, ny-1].legend([legend_pullin, legend_release], ['Pull-in', 'Release'])
+    fig.legend([legend_pullin, legend_release], ['Pull-in', 'Release'], loc='lower right', ncol=2)
 
     plt.tight_layout()
     plt.savefig("figures/" + timestamp + ".png")

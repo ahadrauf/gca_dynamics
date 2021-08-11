@@ -5,6 +5,8 @@ Dynamics characterization for a MEMS electrostatic inchworm motor and its gap cl
 This code just required numpy, scipy, and matplotlib. A good script to run first after setup
 is `python sim_gca_transient.py` to get a sense for what's going on.
 
+You install the requirements all in one go by calling ```pip install -r requirements.txt```.
+
 ## Code Structure
 This simulation model is meant to be modular, so you can easily swap between different layouts and/or
 processes without changing too much of the actual simulation code.
@@ -45,7 +47,24 @@ def sim_gca(model, u, t_span, verbose=False):
     return sol
 ```
 
-
+## FAQ's
+* I get the error ```gca.py:149: RuntimeWarning: invalid value encountered in sqrt``` or ```gca.py:177: IntegrationWarning: The occurrence of roundoff error is detected, which prevents 
+  the requested tolerance from being achieved.  The error may be 
+  underestimated.``` when running my code and using Fes_calc2 (i.e. choosing calc_method=2 as an option
+  for Fes() in gca.py).
+    * This is likely because the time step of the integration is too large. You can change this in the
+    max_step option in solve_ivp() (e.g. see the sim_gca() function in sim_gca_V_fingerL_pullin_release.py
+      for reference. Note that not all integral solvers in Scipy accept the max_step argument - the default
+      RK45 method has been found to work pretty well). The error is caused when the gap between fingers
+      becomes negative (i.e. pull-in happens, but the integration routine jumps over the 
+      terminate_simulation boundary condition instead of converging to it).
+      
+* I get the warning ```mio.py:226: MatReadWarning: Duplicate variable name "None" in stream - replacing previous with new
+Consider mio5.varmats_from_mat to split file into single variable files
+  matfile_dict = MR.get_variables(variable_names)```
+  * Probably not an issue? This is caused by some file formatting issue in how I'm reading the data files (in the ```/data```
+    folder). I'm not sure exactly how to fix this, to be honest - fiddling with the import settings should
+  be enough, but it reads the data correctly so who cares?
 
 ## Acknowledgements
 This library was inspired by work by Daniel Contreras and Craig Schindler during their Ph.D.

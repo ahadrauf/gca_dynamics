@@ -52,8 +52,8 @@ if __name__ == "__main__":
         for idy in range(len(fingerL_values)):
             fingerW = fingerW_values[idx]
             fingerL = fingerL_values[idy]
-            model.gca.fingerW = fingerW-2*model.gca.process.overetch
-            model.gca.fingerL = fingerL-model.gca.process.overetch
+            model.gca.fingerW = fingerW - 2*model.gca.process.overetch
+            model.gca.fingerL = fingerL - model.gca.process.overetch
             model.gca.update_dependent_variables()
 
             V_converged = []
@@ -64,12 +64,13 @@ if __name__ == "__main__":
 
                 if len(sol.t_events[0]) > 0:
                     V_converged.append(V)
-                    times_converged.append(sol.t_events[0][0] * 1e6)  # us conversion
+                    times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
             print(times_converged)
 
-            ax = plt.subplot(nx, ny, nx*idy+idx+1)
+            ax = plt.subplot(nx, ny, nx*idy + idx + 1)
             plt.plot(V_converged, times_converged)
-            ax.text(0.8*ax.get_xlim()[-1], 0.8*ax.get_ylim()[-1], "w={}um\nL={}um".format(fingerW*1e6, fingerL*1e6))
+            ax.text(0.8*ax.get_xlim()[-1], 0.8*ax.get_ylim()[-1],
+                    "w={}um\nL={}um".format(fingerW*1e6, fingerL*1e6))
             ax.set_aspect(1.0/ax.get_data_ratio(), adjustable='box')
 
     plt.tight_layout()
