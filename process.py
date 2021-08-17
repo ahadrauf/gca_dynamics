@@ -18,7 +18,7 @@ class SOI:
 
 class SOIwater:
     def __init__(self):
-        self.overetch = 0.465e-6  # process overetch (m)
+        self.overetch = 0.5e-6  # process overetch (m)
         self.small_overetch = 0.19e-6  # process overetch (m) for small gaps (<4 um) (probably ignored for this work)
         self.small_overetch_threshold = 3.5e-6  # threshold for applying small_overetch
         self.t_SOI = 40e-6  # thickness of silicon (m)

@@ -11,10 +11,10 @@ class Assembly:
     def x0(self):
         return np.hstack([part.x0 for part in self.parts])
 
-    def dx_dt(self, t, x, u, verbose=False):
+    def dx_dt(self, t, x, u, verbose=False, **kwargs):
         x_parts = self.unzip_state(x)
         u_parts = self.unzip_input(u)
-        dx_dt = np.hstack([part.dx_dt(t, x, u(t, x)) for (part, x, u) in zip(self.parts, x_parts, u_parts)])
+        dx_dt = np.hstack([part.dx_dt(t, x, u(t, x), **kwargs) for (part, x, u) in zip(self.parts, x_parts, u_parts)])
         if verbose:
             print("t: {}, x: {}, u: {}, dx/dt: {}".format(t, x, u(t, x), dx_dt))
         return dx_dt

@@ -7,7 +7,8 @@ import matplotlib.pyplot as plt
 from scipy.io import loadmat, savemat
 from datetime import datetime
 from utils import *
-from sklearn.metrics import r2_score
+from sklearn.metrics import r2_score, mean_squared_error
+import time
 
 
 def setup_model_pullin():
@@ -97,6 +98,10 @@ if __name__ == "__main__":
     release_avg = []
     release_std = []
     labels = []
+    r2_scores_pullin = []
+    r2_scores_release = []
+    rmse_pullin = []
+    rmse_release = []
     for i in range(1, len(fingerL_values) + 1):
         pullin_V.append(np.ndarray.flatten(data["V{}_Arr1".format(i)]))
         pullin_avg.append(np.ndarray.flatten(data["tmeas{}_Arr1".format(i)]))
@@ -134,17 +139,38 @@ if __name__ == "__main__":
             # V_test.append(V + 1.5)
             # V_test.append(V + 2)
         for V in V_test:
+            start_time = time.process_time()
             u = setup_inputs(V=V, Fext=Fext)
             sol = sim_gca(model, u, t_span)
 
             if len(sol.t_events[0]) > 0:
                 V_converged.append(V)
                 times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
+
+            end_time = time.process_time()
+            print("Runtime for L=", fingerL, ", V=", V, "=", end_time - start_time)
         print(fingerL, V_converged, times_converged)
 
-        line,  = axs[idy//ny, idy%ny].plot(V_converged, times_converged)
+        line, = axs[idy//ny, idy%ny].plot(V_converged, times_converged)
         if idy == ny - 1:
             legend_pullin = line
+
+        # Calculate the r2 score
+        actual = []
+        pred = []
+        for V in V_converged:
+            if V in pullin_V[idy]:
+                idx = np.where(pullin_V[idy] == V)[0][0]
+                actual.append(pullin_avg[idy][idx])
+                idx = np.where(V_converged == V)[0][0]
+                pred.append(times_converged[idx])
+        r2 = r2_score(actual, pred)
+        print("Pullin Pred:", pred, "Actual:", actual)
+        print("R2 score for L=", fingerL, "=", r2)
+        r2_scores_pullin.append(r2)
+        rmse = mean_squared_error(actual, pred, squared=False)
+        rmse_pullin.append(rmse)
+        print("RMSE score for L=", fingerL, "=", rmse)
 
     # Release measurements
     for idy in range(len(fingerL_values)):
@@ -157,6 +183,7 @@ if __name__ == "__main__":
         V_test = V_values
         # V_test = list(np.arange(min(V_values), max(V_values) + 1, 1.))
         for V in V_test:
+            start_time = time.process_time()
             model = setup_model_release(V=V, Fext=Fext)
             model.gca.fingerL = fingerL - model.gca.process.overetch
             model.gca.update_dependent_variables()
@@ -168,10 +195,13 @@ if __name__ == "__main__":
             if len(sol.t_events[0]) > 0:
                 V_converged.append(V)
                 times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
+
+            end_time = time.process_time()
+            print("Runtime for L=", fingerL, ", V=", V, "=", end_time - start_time)
         print(times_converged)
 
         # axs[idy//ny, idy%ny].plot(V_converged, times_converged, 'r')
-        line,  = axs[idy//ny, idy%ny].plot(V_converged, times_converged, 'r')
+        line, = axs[idy//ny, idy%ny].plot(V_converged, times_converged, 'r')
         if idy == ny - 1:
             legend_release = line
 
@@ -185,7 +215,18 @@ if __name__ == "__main__":
                 idx = np.where(V_converged == V)[0][0]
                 pred.append(times_converged[idx])
         r2 = r2_score(actual, pred)
+        print("Release Pred:", pred, "Actual:", actual)
         print("R2 score for L=", fingerL, "=", r2)
+        r2_scores_release.append(r2)
+        rmse = mean_squared_error(actual, pred, squared=False)
+        rmse_release.append(rmse)
+        print("RMSE score for L=", fingerL, "=", rmse)
+
+    print("Finger L values:", [L*1e6 for L in fingerL_values])
+    print("Pullin R2 scores:", r2_scores_pullin, np.mean(r2_scores_pullin), np.std(r2_scores_pullin))
+    print("Release R2 scores:", r2_scores_release, np.mean(r2_scores_release), np.std(r2_scores_release))
+    print("Pullin RMSE scores:", rmse_pullin, np.mean(rmse_pullin), np.std(rmse_pullin))
+    print("Release RMSE scores:", rmse_release, np.mean(rmse_release), np.std(rmse_release))
 
     # axs[0, ny-1].legend([legend_pullin, legend_release], ['Pull-in', 'Release'])
     fig.legend([legend_pullin, legend_release], ['Pull-in', 'Release'], loc='lower right', ncol=2)

@@ -7,7 +7,8 @@ import matplotlib.pyplot as plt
 from scipy.io import loadmat, savemat
 from datetime import datetime
 from utils import *
-from sklearn.metrics import r2_score
+from sklearn.metrics import r2_score, mean_squared_error
+import time
 
 
 
@@ -32,8 +33,8 @@ def setup_inputs(**kwargs):
     return lambda t, x: np.array([V, Fext])
 
 
-def sim_gca(model, u, t_span, verbose=False):
-    f = lambda t, x: model.dx_dt(t, x, u, verbose=verbose)
+def sim_gca(model, u, t_span, verbose=False, **kwargs):
+    f = lambda t, x: model.dx_dt(t, x, u, verbose=verbose, **kwargs)
     x0 = model.x0()
     terminate_simulation = lambda t, x: model.terminate_simulation(t, x)
     terminate_simulation.terminal = True
@@ -91,6 +92,10 @@ if __name__ == "__main__":
     release_avg = []
     release_std = []
     labels = []
+    r2_scores_pullin = []
+    r2_scores_release = []
+    rmse_pullin = []
+    rmse_release = []
     for i in range(1, len(supportW_values) + 1):
         pullin_V.append(np.ndarray.flatten(data["V{}_Arr2".format(i)]))
         pullin_avg.append(np.ndarray.flatten(data["tmeas{}_Arr2".format(i)]))
@@ -131,18 +136,38 @@ if __name__ == "__main__":
             # V_test.append(V + 1.5)
             # V_test.append(V + 2)
         for V in V_test:
+            start_time = time.process_time()
             u = setup_inputs(V=V, Fext=Fext)
-            sol = sim_gca(model, u, t_span)
+            sol = sim_gca(model, u, t_span, Fes_calc_method=2, Fb_calc_method=1)
 
             if len(sol.t_events[0]) > 0:
                 V_converged.append(V)
                 times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
+            end_time = time.process_time()
+            print("Runtime for L=", supportW, ", V=", V, "=", end_time - start_time)
         print(supportW, V_converged, times_converged)
 
         # axs[idy//ny, idy%ny].plot(V_converged, times_converged)
         line, = axs[idy//ny, idy%ny].plot(V_converged, times_converged)
         if idy == ny - 1:
             legend_pullin = line
+
+        # Calculate the r2 score
+        actual = []
+        pred = []
+        for V in V_converged:
+            if V in pullin_V[idy]:
+                idx = np.where(pullin_V[idy] == V)[0][0]
+                actual.append(pullin_avg[idy][idx])
+                idx = np.where(V_converged == V)[0][0]
+                pred.append(times_converged[idx])
+        r2 = r2_score(actual, pred)
+        print("Pullin Pred:", pred, "Actual:", actual)
+        print("R2 score for supportW=", supportW, "=", r2)
+        r2_scores_pullin.append(r2)
+        rmse = mean_squared_error(actual, pred, squared=False)
+        rmse_pullin.append(rmse)
+        print("RMSE score for supportW=", supportW, "=", rmse)
 
     # Release measurements
     for idy in range(len(supportW_values)):
@@ -155,6 +180,7 @@ if __name__ == "__main__":
         V_test = V_values
         # V_test = list(np.arange(min(V_values), max(V_values) + 1, 1.))
         for V in V_test:
+            start_time = time.process_time()
             model = setup_model_release(V=V, Fext=Fext)
             model.gca.supportW = supportW - 2*model.gca.process.overetch
             # if supportW < 3.5e-6:
@@ -165,11 +191,14 @@ if __name__ == "__main__":
             u = [V, Fext]
             model.gca.x0 = model.gca.x0_release(u)
             u = setup_inputs(V=0, Fext=Fext)  # Changed for release
-            sol = sim_gca(model, u, t_span)
+            sol = sim_gca(model, u, t_span, Fes_calc_method=2, Fb_calc_method=1)
 
             if len(sol.t_events[0]) > 0:
                 V_converged.append(V)
                 times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
+
+            end_time = time.process_time()
+            print("Runtime for L=", supportW, ", V=", V, "=", end_time - start_time)
         print(times_converged)
         # axs[idy//ny, idy%ny].plot(V_converged, times_converged, 'r')
         line, = axs[idy//ny, idy%ny].plot(V_converged, times_converged, 'r')
@@ -187,6 +216,16 @@ if __name__ == "__main__":
                 pred.append(times_converged[idx])
         r2 = r2_score(actual, pred)
         print("R2 score for supportW=", supportW, "=", r2)
+        r2_scores_release.append(r2)
+        rmse = mean_squared_error(actual, pred, squared=False)
+        rmse_release.append(rmse)
+        print("RMSE score for supportW=", supportW, "=", rmse)
+
+    print("Support W values:", supportW_values)
+    print("Pullin R2 scores:", r2_scores_pullin, np.mean(r2_scores_pullin), np.std(r2_scores_pullin))
+    print("Release R2 scores:", r2_scores_release, np.mean(r2_scores_release), np.std(r2_scores_release))
+    print("Pullin RMSE scores:", rmse_pullin, np.mean(rmse_pullin), np.std(rmse_pullin))
+    print("Release RMSE scores:", rmse_release, np.mean(rmse_release), np.std(rmse_release))
 
     # add a big axis, hide frame
     fig.add_subplot(111, frameon=False)

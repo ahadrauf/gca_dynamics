@@ -97,7 +97,7 @@ def plot_solution(sol, t_sim, model, plt_title=None):
 
 
 if __name__ == "__main__":
-    V = 10
+    V = 3
     # Fext = 50e-6
     Fext = 0.
     model = setup_model_pullin()

@@ -22,7 +22,7 @@ class GCA:
         # To access important simulation variables after the simulation
         self.sim_log = {}
 
-    def dx_dt(self, t, x, u):
+    def dx_dt(self, t, x, u, Fes_calc_method=2, Fb_calc_method=2):
         t_SOI = self.process.t_SOI
         density = self.process.density
         m = self.spineA*t_SOI*density
@@ -32,8 +32,8 @@ class GCA:
                 2*(self.fingerL + self.process.t_SOI))
 
         V, Fext = self.unzip_input(u)
-        Fes = self.Fes(x, u)
-        Fb = self.Fb(x, u)
+        Fes = self.Fes(x, u, calc_method=Fes_calc_method)
+        Fb = self.Fb(x, u, calc_method=Fb_calc_method)
         Fk = self.Fk(x, u)
         self.add_to_sim_log(['t', 'Fes', 'Fb', 'Fk'], [t, Fes, Fb, Fk])
 
@@ -51,7 +51,7 @@ class GCA:
                    (1/(self.gf - x)**2 - 1/(self.gb + x)**2)
 
         # Fes_calc2 = self.Fes_calc2(x, V)
-        # print("Fes1: %0.3e, Fes2: %0.3e" % (Fes_calc1(), Fes_calc2))
+        # print("Fes1: %0.3e, Fes2: %0.3e" % (Fes_calc1(), Fes_calc2()))
         if V == 0:  # for speed
             Fes = 0
         else:
@@ -59,6 +59,8 @@ class GCA:
                 Fes = Fes_calc1()
             elif calc_method == 2:
                 Fes = self.Fes_calc2(x, V)[0]
+                # v1 = Fes_calc1()
+                # print("v1", v1, "v2", Fes, Fes/v1)
             else:
                 Fes = 0
 
@@ -66,9 +68,16 @@ class GCA:
 
     def Fk(self, x, u):
         x, xdot = self.unzip_state(x)
-        return self.Fkcon*self.k_support*x
+        k = self.k_support
+        # if x > (3e-6 + 2*0.2e-6):  # a stop-gap measure for velocity testing simulations
+        #     Estar = self.process.E/(1 - self.process.v**2)
+        #     w_pawl = 4e-6 - 2*self.process.overetch
+        #     L_pawl = 122e-6
+        #     I_pawl = w_pawl**3 * self.process.t_SOI / 12
+        #     k += 3*Estar*I_pawl/L_pawl**3
+        return self.Fkcon*k*x
 
-    def Fb(self, x, u):
+    def Fb(self, x, u, calc_method=2):
         x, xdot = self.unzip_state(x)
         fingerW = self.fingerW
         fingerL = self.fingerL
@@ -79,6 +88,7 @@ class GCA:
         S1 = max(fingerL, t_SOI)
         S2 = min(fingerL, t_SOI)
         beta = lambda eta: 1 - (1 - 0.42)*eta
+
         # beta = lambda eta: 1 - 0.6*eta
 
         def bsf_calc1():
@@ -93,7 +103,7 @@ class GCA:
             bsff = self.process.mu*self.Nfing*S1*(S2**3)*beta(S2/S1)*(1/gf**3)
             bsfb = self.process.mu*self.Nfing*S1*(S2**3)*beta(S2/S1)*(1/gb**3)
             bsf_adjf = (4*(gf**3)*fingerW + 2*(self.process.t_ox**3)*t_SOI_primef)/(
-                (gf**3)*fingerW + 2*(self.process.t_ox**3)*t_SOI_primef)
+                    (gf**3)*fingerW + 2*(self.process.t_ox**3)*t_SOI_primef)
             bsf_adjb = (4*(gb**3)*fingerW + 2*(self.process.t_ox**3)*t_SOI_primeb)/(
                     (gb**3)*fingerW + 2*(self.process.t_ox**3)*t_SOI_primeb)
             bsf = bsff*bsf_adjf + bsfb*bsf_adjb
@@ -131,18 +141,30 @@ class GCA:
             bsf = bsff*bsf_adjf + bsfb*bsf_adjb
             return bsf
 
-        bsf = bsf_calc2()
+        calc_methods = [bsf_calc1, bsf_calc2, bsf_calc3, bsf_calc4]
+        bsf = calc_methods[calc_method]()
 
         # Couette flow damping
         bcf = self.process.mu*self.spineA/self.process.t_ox
 
-        # print(gf, gb, bsf, bcf, bsf_calc1(), bsf_calc2(), bsf_calc3(), bsf_calc4())
+        # print("Damping:", gf, gb, bsf, bcf, bsf_calc1(), bsf_calc2(), bsf_calc3(), bsf_calc4())
 
         # Total damping
         b = bsf + bcf
         return self.Fbcon*b*xdot
 
     def Fes_calc2(self, x, V):
+        """
+        Modified electrostatic force calculation factoring in finger bending and fringe fields
+        Derivation modified from:
+        [1] D. Elata and V. Leus, “How slender can comb-drive fingers be?,” J. Micromech.
+        Microeng., vol. 15, no. 5, pp. 1055–1059, May 2005, doi: 10.1088/0960-1317/15/5/023.
+        [2] V. Leus, D. Elata, V. Leus, and D. Elata, “Fringing field effect in electrostatic actuators,” 2004.
+
+        :param x: GCA state
+        :param V: Input voltage
+        :return: (Output force, an array (size 11,) of the finger deflection at evenly spaced intervals)
+        """
         Estar = self.process.E/(1 - self.process.v**2)
         a = self.fingerL_buffer/self.fingerL_total
         gf, gb = self.gf - x, self.gb + x
@@ -152,7 +174,7 @@ class GCA:
             # gb = self.gb + self.gf
         beta = gb/gf
         Vtilde = V*np.sqrt(6*self.process.eps0*self.fingerL_total**4/(Estar*self.fingerW**3*gf**3))
-        l = (Vtilde**2*(2/beta**3 + 2))**(0.25)
+        l = np.power(Vtilde**2*(2/beta**3 + 2), 0.25)
 
         try:
             A = np.array([[-a**2, -a**3, np.exp(-l*a), np.exp(l*a), np.sin(l*a), np.cos(l*a)],
@@ -193,25 +215,46 @@ class GCA:
 
         # calculate fringing field
         # Source: [1]V. Leus, D. Elata, V. Leus, and D. Elata, “Fringing field effect in electrostatic actuators,” 2004.
-        # Fescon = 1 + h/np.pi/w + h/np.pi/w*np.log(2*np.pi*w/h) + h/np.pi/w*np.log(
-        #     1 + 2*t/h + 2*np.sqrt(t/h + t**2/h**2))
-        Fescon = 1 + h/np.pi/w*(1 + t/np.sqrt(t*h + t**2))
+        Fescon = 1 + h/np.pi/w*(1 + t/np.sqrt(t*h + t**2))  # F = 1/2*V^2*dC/dx (C taken from Eq. 10)
+        # Fescon = 1.
         # print("Fescon", Fescon)
         return Fescon*Fes, [y(xi) for xi in np.arange(0, 1.1, 0.1)]
 
     def pulled_in(self, t, x):
+        """
+        Checks whether the GCA has pulled in, i.e. when the GCA spine hits the gap stop
+        :param t: Time (unused)
+        :param x: GCA state
+        :return: True/False of whether the GCA has pulled in
+        """
         x, xdot = self.unzip_state(x)
         # print("Termination check: {}, {}".format(x, self.x_GCA))
         return x >= self.x_GCA
 
     def released(self, t, x):
+        """
+        Checks whether the GCA has returned back to its initial position x[0] = 0
+        :param t: Time (unused)
+        :param x: GCA state
+        :return: True/False of whether the GCA has returned to its initial position again
+        """
         x, xdot = self.unzip_state(x)
         return x <= 0
 
     def x0_pullin(self):
+        """
+        Initial state for pullin simulations, i.e. the GCA begins at position x[0] = 0 and velocity x[1] = 0
+        :return: Initial state for pullin simulations
+        """
         return np.array([0, 0])
 
     def x0_release(self, u):
+        """
+        Computes
+
+        :param u:
+        :return:
+        """
         V, Fext = self.unzip_input(u)
         x = np.array([self.x_GCA, 0])
         # Fes = self.Fes(x, u)/self.Nfing  # Fes for one finger!
@@ -244,9 +287,6 @@ class GCA:
         v_support = self.x_GCA*np.sqrt(self.Fkcon*self.k_support/m_support)/2.
 
         # print("k_spine", k_spine, "k_fing", k_fing)
-        print("xfing", x_fing_orig, x_fing, Fes, y)
-        print("masses: ", m_fing, k_fing/w1**2, m_spine, m_support)
-        print("velocities: ", m_spine, m_spine_v2, v_spine, v_spine_v2, v_support)
 
         # Conservation of linear momentum
         v0 = (self.Nfing*m_fing*v_fing + m_spine*v_spine + m_support*v_support)/(
@@ -255,16 +295,19 @@ class GCA:
         v0_2 = (self.Nfing*m_fing_2*v_fing + m_spine*v_spine)/(self.Nfing*m_fing_2 + m_spine)
         v0_3 = (self.Nfing*m_fing*v_fing + m_spine_v2*v_spine_v2)/(self.Nfing*m_fing + m_spine_v2)
         v0_4 = (self.Nfing*m_fing_2*v_fing + m_spine_v2*v_spine_v2)/(self.Nfing*m_fing_2 + m_spine_v2)
-        # print("Mass Dimension vs. Mass Spring", m_fing, m_fing_2)
-        print("Velocities with Momentum Conservation", v0, v0_orig, v0_2, v0_3, v0_4)
         v0_5 = np.sqrt((self.Nfing*m_fing*v_fing**2 + m_spine*v_spine**2)/(self.Nfing*m_fing + m_spine))
         v0_6 = np.sqrt((self.Nfing*m_fing_2*v_fing**2 + m_spine*v_spine**2)/(self.Nfing*m_fing_2 + m_spine))
         v0_7 = np.sqrt((self.Nfing*m_fing*v_fing**2 + m_spine_v2*v_spine_v2**2)/(self.Nfing*m_fing + m_spine_v2))
         v0_8 = np.sqrt((self.Nfing*m_fing_2*v_fing**2 + m_spine_v2*v_spine_v2**2)/(self.Nfing*m_fing_2 + m_spine_v2))
-        print("Velocities with Energy Conservation", v0_5, v0_6, v0_7, v0_8)
-        # v0 = np.sqrt((self.Nfing*m_fing*v_fing**2 + m_spine*v_spine**2)/(self.Nfing*m_fing + m_spine))
-        print('Release values (Fes, v_fing, v_spine, v0):', Fes, v_fing, v_spine, v0)
-        return np.array([self.x_GCA, -v0])
+
+        # print("xfing", x_fing_orig, x_fing, Fes, y)
+        # print("masses: ", m_fing, k_fing/w1**2, m_spine, m_support)
+        # print("velocities: ", m_spine, m_spine_v2, v_spine, v_spine_v2, v_support)
+        # # print("Mass Dimension vs. Mass Spring", m_fing, m_fing_2)
+        # print("Velocities with Momentum Conservation", v0, v0_orig, v0_2, v0_3, v0_4)
+        # print("Velocities with Energy Conservation", v0_5, v0_6, v0_7, v0_8)
+        # print('Release values (Fes, v_fing, v_spine, v0):', Fes, v_fing, v_spine, v0)
+        return np.array([self.x_GCA, -v0_orig])
 
     # Helper functions
     def extract_real_dimensions_from_drawn_dimensions(self, drawn_dimensions_filename):
@@ -287,12 +330,18 @@ class GCA:
         self.fingerL_buffer = drawn_dimensions["fingerL_buffer"]
         self.spineW = drawn_dimensions["spineW"] - 2*overetch
         self.spineL = drawn_dimensions["spineL"] - 2*overetch
-        self.etch_hole_size = drawn_dimensions["etch_hole_size"] + 2*overetch
         self.etch_hole_spacing = drawn_dimensions["etch_hole_spacing"] - 2*overetch
         self.gapstopW = drawn_dimensions["gapstopW"] - 2*overetch
         self.gapstopL_half = drawn_dimensions["gapstopL_half"] - overetch
         self.anchored_electrodeW = drawn_dimensions["anchored_electrodeW"] - 2*overetch
         self.anchored_electrodeL = drawn_dimensions["anchored_electrodeL"] - overetch
+
+        if "etch_hole_size" in drawn_dimensions:
+            self.etch_hole_width = drawn_dimensions["etch_hole_size"] + 2*overetch
+            self.etch_hole_height = drawn_dimensions["etch_hole_size"] + 2*overetch
+        else:
+            self.etch_hole_width = drawn_dimensions["etch_hole_width"] + 2*overetch
+            self.etch_hole_height = drawn_dimensions["etch_hole_height"] + 2*overetch
 
         # Simulating GCAs attached to inchworm motors
         if "armW" in drawn_dimensions:
@@ -310,11 +359,10 @@ class GCA:
         self.k_support = 2*Estar*(self.supportW**3)*self.process.t_SOI/(self.supportL**3)
         self.gs = self.gf - self.x_GCA
         self.fingerL_total = self.fingerL + self.fingerL_buffer
-        self.num_etch_holes = round((self.spineL - self.etch_hole_spacing - self.process.overetch)/
-                                    (self.etch_hole_spacing + self.etch_hole_size))
-        self.mainspineA = self.spineW*self.spineL - self.num_etch_holes*(self.etch_hole_size**2)
-        self.spineA = self.mainspineA + self.Nfing*self.fingerL_total*self.fingerW + \
-                      2*self.gapstopW*self.gapstopL_half
+        self.num_etch_holes = round((self.spineL - self.etch_hole_spacing - self.process.overetch) /
+                                    (self.etch_hole_spacing + self.etch_hole_width))
+        self.mainspineA = self.spineW*self.spineL - self.num_etch_holes*(self.etch_hole_width*self.etch_hole_height)
+        self.spineA = self.mainspineA + self.Nfing*self.fingerL_total*self.fingerW + 2*self.gapstopW*self.gapstopL_half
         if hasattr(self, "armW"):  # GCA includes arm (attached to inchworm motor)
             self.spineA += self.armW*self.armL
 

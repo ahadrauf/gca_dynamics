@@ -2,7 +2,8 @@
 Dynamics characterization for a MEMS electrostatic inchworm motor and its gap closing actuators
 
 ## Installation
-This code just required numpy, scipy, and matplotlib. A good script to run first after setup
+This code just requires `numpy`, `scipy`, and `matplotlib`, although some scripts also involve the 
+`scikit-learn.metrics` module. A good script to run first after setup
 is `python sim_gca_transient.py` to get a sense for what's going on.
 
 You install the requirements all in one go by calling ```pip install -r requirements.txt```.
@@ -12,7 +13,10 @@ This simulation model is meant to be modular, so you can easily swap between dif
 processes without changing too much of the actual simulation code.
 
 * `process.py`: the process parameters for a 2-layer SOI process, or any other processes that you
-  might come up with. You can import your respective process with `from process import SOI`.
+  might come up with. You can import your respective process with 
+  ```python 
+  from process import SOI
+  ```
 * `fawn.csv`, `gamma.csv`, etc.: the layout files (named after the layouts of their respective runs).
 These files store the drawn dimensions of your model. The code written so far is robust to anything
   after the second comma (so you can write comments there).
