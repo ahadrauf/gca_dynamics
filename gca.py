@@ -215,8 +215,8 @@ class GCA:
 
         # calculate fringing field
         # Source: [1]V. Leus, D. Elata, V. Leus, and D. Elata, “Fringing field effect in electrostatic actuators,” 2004.
-        Fescon = 1 + h/np.pi/w*(1 + t/np.sqrt(t*h + t**2))  # F = 1/2*V^2*dC/dx (C taken from Eq. 10)
-        # Fescon = 1.
+        # Fescon = 1 + h/np.pi/w*(1 + t/np.sqrt(t*h + t**2))  # F = 1/2*V^2*dC/dx (C taken from Eq. 10)
+        Fescon = 1.
         # print("Fescon", Fescon)
         return Fescon*Fes, [y(xi) for xi in np.arange(0, 1.1, 0.1)]
 

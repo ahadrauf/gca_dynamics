@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.io import loadmat, savemat
+from datetime import datetime
 
 np.set_printoptions(precision=3, suppress=True)
 
@@ -35,7 +36,13 @@ def setup_plot(len_x, len_y, x_data, y_data, x_label="", y_label="", plt_title=N
 
     return fig, axs
 
+
 if __name__ == '__main__':
+    now = datetime.now()
+    name_clarifier = "_pullin_scope_trace"
+    timestamp = now.strftime("%Y%m%d_%H_%M_%S") + name_clarifier
+    print(timestamp)
+
     data = loadmat("data/pullin_release_traces.mat")
     t_pullin = np.ndarray.flatten(data["t_pullin"])
     t_release = np.ndarray.flatten(data["t_release"])
@@ -44,13 +51,59 @@ if __name__ == '__main__':
     Vdrive_pullin = np.ndarray.flatten(data["Vdrive_pullin"])
     Vdrive_release = np.ndarray.flatten(data["Vdrive_release"])
 
-    # print(np.where(0 <= t_pullin 1))
-    t_pullin_range = [-10e-6, 80e-6]
-    idx = np.where(np.all(t_pullin_range[0] <= t_pullin, t_pullin <= t_pullin_range[1]))
+    ##################### Pullin-in Scope Trace #####################
+    t_pullin_range = [-10, 80]  # us
+    idx = np.where((t_pullin_range[0] <= t_pullin) & (t_pullin <= t_pullin_range[1]))
     t_pullin_plot = t_pullin[idx]
     Vdrive_pullin_plot = Vdrive_pullin[idx]
     Vsense_pullin_plot = Vsense_pullin[idx]
     fig, axs = setup_plot(2, 1, [t_pullin_plot, t_pullin_plot], [Vdrive_pullin_plot, Vsense_pullin_plot],
                           "Time (us)", "Voltage (V)", "Pull-in Scope Trace")
+    axs[0].annotate("Actuation Signal", xy=(0.98, 0.035), xycoords='axes fraction', fontsize=14, color='blue',
+                    xytext=(-2, -2), textcoords='offset points', ha='right', va='bottom')
+    min_pos_t_idx = np.argmin(np.abs(t_pullin_plot))
+    axs[0].annotate("Pull-in Voltage", xy=(t_pullin_plot[min_pos_t_idx], Vdrive_pullin_plot[min_pos_t_idx]),
+                    xytext=(20, 20), textcoords='offset points', ha='left', va='bottom', fontsize=14,
+                    arrowprops=dict(arrowstyle='->'))
 
+    # Labels for Sense Signal
+    axs[1].annotate("Sense Signal", xy=(0.035, 0.035), xycoords='axes fraction', fontsize=14, color='red',
+                    xytext=(-2, -2), textcoords='offset points', ha='left', va='bottom')
+    axs[1].annotate("Coupling Rise", xy=(t_pullin_plot[min_pos_t_idx], Vsense_pullin_plot[min_pos_t_idx]),
+                    xytext=(10, -20), textcoords='offset points', ha='left', va='top', fontsize=14,
+                    arrowprops=dict(arrowstyle='->'))
+    max_sense = np.max(Vsense_pullin_plot)
+    signal_drop_idx = np.where(Vsense_pullin_plot <= 0.9*max_sense)[0][0]
+    print(t_pullin_plot[signal_drop_idx], Vsense_pullin_plot[signal_drop_idx])
+    axs[1].annotate("Signal Drop", xy=(t_pullin_plot[signal_drop_idx], Vsense_pullin_plot[signal_drop_idx]),
+                    xytext=(-20, -30), textcoords='offset points', ha='right', va='top', fontsize=14,
+                    arrowprops=dict(arrowstyle='->'))
+    idx_range_switch_bounce = np.where((65 <= t_pullin_plot) & (t_pullin_plot <= 70))
+    idx_switch_bounce = np.argmax(Vsense_pullin_plot[idx_range_switch_bounce]) + idx_range_switch_bounce[0][0]
+    axs[1].annotate("Switch\nBounce", xy=(t_pullin_plot[idx_switch_bounce], Vsense_pullin_plot[idx_switch_bounce]),
+                    xytext=(5, 20), textcoords='offset points', ha='left', va='bottom', fontsize=14,
+                    arrowprops=dict(arrowstyle='->'))
+
+    # Pull-in Time Indicator in the Middle
+    # axs[0].text(0.5, -0.12, "Pull-in Time", size=14, ha="center", va="top", transform=axs[0].transAxes, color='green')
+    x_frac_min_pos_t = (0.0 - t_pullin_plot[0])/(t_pullin_plot[-1] - t_pullin_plot[0])
+    x_frac_signal_drop = (t_pullin_plot[signal_drop_idx] - t_pullin_plot[0])/(t_pullin_plot[-1] - t_pullin_plot[0])
+    print(x_frac_min_pos_t, x_frac_signal_drop)
+    axs[0].annotate("Pull-in Time", xy=(0.7539, -0.25), xycoords='axes fraction',
+                    xytext=(-50, 0), textcoords='offset points', ha='right', va='center', fontsize=14,
+                    arrowprops=dict(arrowstyle='->', facecolor='green'), color='green')
+    axs[0].annotate("", xy=(0.1460, -0.25), xycoords='axes fraction',
+                    xytext=(50, 0), textcoords='offset points', ha='left', va='center', fontsize=14,
+                    arrowprops=dict(arrowstyle='->', facecolor='green'), color='green')
+    # axs[1].annotate("", xy=(t_pullin_plot[signal_drop_idx], Vsense_pullin_plot[signal_drop_idx]),
+    #                 xytext=(-20, 0), ha='left', va='top', fontsize=10,
+    #                 arrowprops=dict(arrowstyle='<->'))
+
+    ##################### Release Scope Trace #####################
+
+    ##################### Release Scope Trace (Zoomed Out) #####################
+
+    fig.tight_layout(h_pad=2)
+    plt.savefig("figures/" + timestamp + ".png")
+    plt.savefig("figures/" + timestamp + ".pdf")
     plt.show()

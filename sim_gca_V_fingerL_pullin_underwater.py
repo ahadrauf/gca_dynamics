@@ -34,7 +34,7 @@ def sim_gca(model, u, t_span, verbose=False):
 
     # speed saving measure
     sol = solve_ivp(f, t_span, x0, events=[terminate_simulation], dense_output=True,
-                    max_step=5e-6)  # , method="LSODA")
+                    max_step=10e-6)  # , method="LSODA")
     return sol
 
 
@@ -67,7 +67,7 @@ if __name__ == "__main__":
     print(timestamp)
 
     model = setup_model_pullin()
-    t_span = [0, 30e-3]
+    t_span = [0, 40e-3]
     Fext = 0
     nx, ny = 2, 2
 
@@ -105,11 +105,23 @@ if __name__ == "__main__":
         # V_test = list(np.arange(min(V_values)-0.01, min(V_values) + 0.15, 0.02))
         # V_test = np.sort(np.append(V_test, V_values))
         if idy == 0:
-            V_test = [min(V_values), max(V_values)]
+            # V_test = [min(V_values), max(V_values)]
+            V_test = list(np.arange(min(V_values)+0.01, min(V_values) + 0.05, 0.01))
+            V_test = np.sort(np.append(V_test, V_values[1:]))
+            # V_test = [min(V_values), min(V_values) + 0.01]
         elif idy == 1:
-            V_test = [min(V_values)-0.05, max(V_values)]
+            # V_test = [min(V_values)-0.05, max(V_values)]
+            V_test = list(np.arange(min(V_values)+0.003, min(V_values) + 0.05, 0.01))
+            V_test = np.sort(np.append(V_test, V_values[1:]))
+            # V_test = [min(V_values) + 0.002, min(V_values) + 0.003]
         else:
-            V_test = [min(V_values)-0.2, max(V_values)]
+            # V_test = [min(V_values)-0.2, max(V_values)]
+            V_test = list(np.arange(min(V_values)-0.13, min(V_values) + 0.05, 0.01))
+            V_test = np.sort(np.append(V_test, V_values))
+            # V_test = [min(V_values) - 0.13, min(V_values) - 0.11]
+        # V_test = list(np.arange(min(V_values) - 0.01, min(V_values) + 0.15, 0.02))
+        # V_test = V_values[:2]
+        # V_test = [min(V_values) - 0.02, min(V_values) - 0.01]
         print(V_test)
         # V_test = V_values
         # for V in V_values:
@@ -130,24 +142,24 @@ if __name__ == "__main__":
                 times_converged.append(sol.t_events[0][0]*1e3)  # ms conversion
 
             end_time = time.process_time()
-            print("Runtime for L=", fingerL, ", V=", V, "=", end_time - start_time)
+            print("Runtime for L=", fingerL, ", V=", V, "=", end_time - start_time, ", time:", times_converged)
         print(fingerL, {a: b for a, b in zip(V_converged, times_converged)})
 
         axs[idy//ny, idy%ny].plot(V_converged, times_converged)
 
         # Calculate the r2 score
-        # actual = []
-        # pred = []
-        # for V in V_converged:
-        #     if V in pullin_V[idy]:
-        #         idx = np.where(pullin_V[idy] == V)[0][0]
-        #         actual.append(pullin_avg[idy][idx])
-        #         idx = np.where(V_converged == V)[0][0]
-        #         pred.append(times_converged[idx])
-        # r2 = r2_score(actual, pred)
-        # r2_scores.append(r2)
-        # print("Pullin Pred:", pred, "Actual:", actual)
-        # print("R2 score for L=", fingerL, "=", r2)
+        actual = []
+        pred = []
+        for V in V_converged:
+            if V in pullin_V[idy]:
+                idx = np.where(pullin_V[idy] == V)[0][0]
+                actual.append(pullin_avg[idy][idx])
+                idx = np.where(V_converged == V)[0][0]
+                pred.append(times_converged[idx])
+        r2 = r2_score(actual, pred)
+        r2_scores.append(r2)
+        print("Pullin Pred:", pred, "Actual:", actual)
+        print("R2 score for L=", fingerL, "=", r2)
 
     # R2 scores
     print("R2 scores:", r2_scores, np.mean(r2_scores), np.std(r2_scores))
