@@ -115,6 +115,6 @@ if __name__ == "__main__":
         plt.plot(V_converged, times_converged, color=colors[idy])
 
     plt.tight_layout()
-    plt.savefig("figures/" + timestamp + ".png")
-    plt.savefig("figures/" + timestamp + ".pdf")
+    plt.savefig("../figures/" + timestamp + ".png")
+    plt.savefig("../figures/" + timestamp + ".pdf")
     plt.show()

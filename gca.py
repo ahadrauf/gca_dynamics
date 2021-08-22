@@ -46,17 +46,13 @@ class GCA:
         x, xdot = self.unzip_state(x)
         V, Fext = self.unzip_input(u)
 
-        def Fes_calc1():
-            return self.Nfing*0.5*V**2*self.process.eps0*self.process.t_SOI*self.fingerL* \
-                   (1/(self.gf - x)**2 - 1/(self.gb + x)**2)
-
         # Fes_calc2 = self.Fes_calc2(x, V)
         # print("Fes1: %0.3e, Fes2: %0.3e" % (Fes_calc1(), Fes_calc2()))
         if V == 0:  # for speed
             Fes = 0
         else:
             if calc_method == 1:
-                Fes = Fes_calc1()
+                Fes = self.Fes_calc1(x, V)
             elif calc_method == 2:
                 Fes = self.Fes_calc2(x, V)[0]
                 # v1 = Fes_calc1()
@@ -75,7 +71,7 @@ class GCA:
         #     L_pawl = 122e-6
         #     I_pawl = w_pawl**3 * self.process.t_SOI / 12
         #     k += 3*Estar*I_pawl/L_pawl**3
-        print(self.spineA*self.process.t_SOI*self.process.density)
+        # print(self.spineA*self.process.t_SOI*self.process.density)
 
         return self.Fkcon*k*x
 
@@ -155,6 +151,10 @@ class GCA:
         b = bsf + bcf
         return self.Fbcon*b*xdot
 
+    def Fes_calc1(self, x, V):
+        return self.Nfing*0.5*V**2*self.process.eps0*self.process.t_SOI*self.fingerL*(
+                    1/(self.gf - x)**2 - 1/(self.gb + x)**2)
+
     def Fes_calc2(self, x, V):
         """
         Modified electrostatic force calculation factoring in finger bending and fringe fields
@@ -217,8 +217,8 @@ class GCA:
 
         # calculate fringing field
         # Source: [1]V. Leus, D. Elata, V. Leus, and D. Elata, “Fringing field effect in electrostatic actuators,” 2004.
-        # Fescon = 1 + h/np.pi/w*(1 + t/np.sqrt(t*h + t**2))  # F = 1/2*V^2*dC/dx (C taken from Eq. 10)
-        Fescon = 1.
+        Fescon = 1 + h/np.pi/w*(1 + t/np.sqrt(t*h + t**2))  # F = 1/2*V^2*dC/dx (C taken from Eq. 10)
+        # Fescon = 1.
         # print("Fescon", Fescon)
         return Fescon*Fes, [y(xi) for xi in np.arange(0, 1.1, 0.1)]
 
@@ -361,7 +361,7 @@ class GCA:
         self.k_support = 2*Estar*(self.supportW**3)*self.process.t_SOI/(self.supportL**3)
         self.gs = self.gf - self.x_GCA
         self.fingerL_total = self.fingerL + self.fingerL_buffer
-        self.num_etch_holes = round((self.spineL - self.etch_hole_spacing - self.process.overetch) /
+        self.num_etch_holes = round((self.spineL - self.etch_hole_spacing - self.process.overetch)/
                                     (self.etch_hole_spacing + self.etch_hole_width))
         self.mainspineA = self.spineW*self.spineL - self.num_etch_holes*(self.etch_hole_width*self.etch_hole_height)
         self.spineA = self.mainspineA + self.Nfing*self.fingerL_total*self.fingerW + 2*self.gapstopW*self.gapstopL_half

@@ -172,6 +172,6 @@ if __name__ == "__main__":
     plt.ylabel("Time (us)")
 
     plt.tight_layout()
-    plt.savefig("figures/" + timestamp + ".png")
-    plt.savefig("figures/" + timestamp + ".pdf")
+    plt.savefig("../figures/" + timestamp + ".png")
+    plt.savefig("../figures/" + timestamp + ".pdf")
     plt.show()

@@ -232,6 +232,6 @@ if __name__ == "__main__":
     fig.legend([legend_pullin, legend_release], ['Pull-in', 'Release'], loc='lower right', ncol=2)
 
     plt.tight_layout()
-    plt.savefig("figures/" + timestamp + ".png")
-    plt.savefig("figures/" + timestamp + ".pdf")
+    plt.savefig("../figures/" + timestamp + ".png")
+    plt.savefig("../figures/" + timestamp + ".pdf")
     plt.show()
