@@ -17,7 +17,7 @@ processes without changing too much of the actual simulation code.
   ```python 
   from process import SOI
   ```
-* `fawn.csv`, `gamma.csv`, etc.: the layout files (named after the layouts of their respective runs).
+* `layouts/fawn.csv`, `layouts/gamma.csv`, etc.: the layout files (named after the layouts of their respective runs).
 These files store the drawn dimensions of your model. The code written so far is robust to anything
   after the second comma (so you can write comments there).
   
@@ -30,7 +30,7 @@ These files store the drawn dimensions of your model. The code written so far is
 can affect each other, so this modularity can help simulate larger components.
   - `from assembly import AssemblyGCA`: A basic GCA, with no other components
     
-* `sim_gca_V_Fext_pullin.py`, etc.: Your simulation files. Because of the structure above, you can
+* `scripts/sim_gca_V_Fext_pullin.py`, etc.: Your simulation files. Because of the structure above, you can
 swap process nodes by changing an import statement or layouts by just swapping which `.csv` file 
   you're reading from. The basic structure of the code is to:
   1. Initialize a model with its drawn dimensions file and specify whether its initial state 
@@ -71,8 +71,8 @@ Consider mio5.varmats_from_mat to split file into single variable files
   be enough, but it reads the data correctly so who cares?
 
 ## Acknowledgements
-This library was inspired by work by Daniel Contreras and Craig Schindler during their Ph.D.
-at UC Berkeley under Professor Kristofer Pister. Their Ph.D. dissertations can be found 
+This library originated from work by Daniel Contreras (Ph.D.), Craig Schindler (Ph.D.), and Ryan Shih (M.S.)
+at UC Berkeley under Professor Kristofer Pister. Daniel's and Craig's Ph.D. dissertations can be found 
 [here](https://www2.eecs.berkeley.edu/Pubs/TechRpts/2019/EECS-2019-18.html) and 
 [here](https://www2.eecs.berkeley.edu/Pubs/TechRpts/2020/EECS-2020-73.html), respectively. Many thanks
 to them for providing the preliminary MATLAB simulation scripts they used in their dissertations.

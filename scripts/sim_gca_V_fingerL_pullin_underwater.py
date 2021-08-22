@@ -14,7 +14,7 @@ from process import *
 
 
 def setup_model_pullin():
-    model = AssemblyGCA(drawn_dimensions_filename="fawn_underwater.csv", process=SOIwater())
+    model = AssemblyGCA(drawn_dimensions_filename="../layouts/fawn_underwater.csv", process=SOIwater())
     # model.gca.x0 = model.gca.x0_pullin()
     model.gca.terminate_simulation = model.gca.pulled_in
     return model
@@ -71,7 +71,7 @@ if __name__ == "__main__":
     Fext = 0
     nx, ny = 2, 2
 
-    data = loadmat("data/20180208_fawn_gca_V_fingerL_pullin_underwater.mat")
+    data = loadmat("../data/20180208_fawn_gca_V_fingerL_pullin_underwater.mat")
     fingerL_values = np.ndarray.flatten(data["LARR"])*1e-6  # Length = 4
 
     pullin_V = []

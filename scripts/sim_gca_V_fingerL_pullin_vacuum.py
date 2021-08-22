@@ -67,7 +67,7 @@ if __name__ == "__main__":
     t_span = [0, 100e-6]
     Fext = 0
 
-    data = loadmat("data/20180208_fawn_gca_V_fingerL_pullin_release.mat")
+    data = loadmat("../data/20180208_fawn_gca_V_fingerL_pullin_release.mat")
     fingerL_values = np.ndarray.flatten(data["LARR"])*1e-6  # Length = 9
 
     V_values = np.arange(20, 105, 5)

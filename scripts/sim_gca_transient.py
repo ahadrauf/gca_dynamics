@@ -6,7 +6,7 @@ from process import *
 
 
 def setup_model_pullin():
-    model = AssemblyGCA(drawn_dimensions_filename="fawn.csv", process=SOIwater())
+    model = AssemblyGCA(drawn_dimensions_filename="../layouts/fawn.csv", process=SOIwater())
     model.gca.x0 = model.gca.x0_pullin()
     # model.gca.x0[0] = -(2e-6 + 2*model.gca.process.overetch)
     # print(model.gca.x0)
@@ -18,7 +18,7 @@ def setup_model_pullin():
 
 def setup_model_release(**kwargs):
     u = [kwargs["V"], kwargs["Fext"]]
-    model = AssemblyGCA(drawn_dimensions_filename="fawn.csv", process=SOI())
+    model = AssemblyGCA(drawn_dimensions_filename="../layouts/fawn.csv", process=SOI())
     # model.gca.k_support = 10.303975
     model.gca.supportW = 2.e-6 - 2*model.gca.process.small_overetch
     model.gca.update_dependent_variables()

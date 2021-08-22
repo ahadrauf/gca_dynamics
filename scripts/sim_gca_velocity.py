@@ -11,14 +11,14 @@ import time
 
 
 def setup_model_pullin():
-    model = AssemblyGCA(drawn_dimensions_filename="fawn_velocity.csv")
+    model = AssemblyGCA(drawn_dimensions_filename="../layouts/fawn_velocity.csv")
     model.gca.x0 = model.gca.x0_pullin()
     model.gca.terminate_simulation = model.gca.pulled_in
     return model
 
 
 def setup_model_pullin_to_shuttle():
-    model = AssemblyGCA(drawn_dimensions_filename="fawn_velocity.csv")
+    model = AssemblyGCA(drawn_dimensions_filename="../layouts/fawn_velocity.csv")
     model.gca.x0 = model.gca.x0_pullin()
     model.gca.terminate_simulation = lambda t, x: x[0] >= (3e-6 + 2*0.2e-6)
     return model
@@ -111,7 +111,7 @@ if __name__ == "__main__":
     t_span = [0, 200e-6]
     Fext = 0
 
-    data = loadmat("data/frequency_vs_velocity.mat")
+    data = loadmat("../data/frequency_vs_velocity.mat")
 
     nx, ny = 2, 2
     # latexify(fig_width=6, columns=3)

@@ -8,7 +8,7 @@ from utils import *
 
 
 def setup_model_pullin():
-    model = AssemblyGCA("gamma.csv")
+    model = AssemblyGCA("../layouts/gamma.csv")
     model.gca.x0 = model.gca.x0_pullin()
     # model.gca.x0[0] -= 2e-6 + 2*model.gca.process.overetch
     model.gca.terminate_simulation = model.gca.pulled_in
@@ -58,7 +58,7 @@ if __name__ == "__main__":
     markers = ['x', 'o', '^']
     support_spring_widths = [0e-6, 5e-6, 6.04e-6]
 
-    data = loadmat("data/20190718_craig_gamma_V_Fext_pullin.mat")
+    data = loadmat("../data/20190718_craig_gamma_V_Fext_pullin.mat")
     Fs = [0e-6, 50e-6, 100e-6]
     Vs = [data['V_0'][0].astype('float64'), data['V_50'][0].astype('float64'), data['V_100'][0].astype('float64')]
     ts = [data['F_0'][0].astype('float64'), data['F_50'][0].astype('float64'), data['F_100'][0].astype('float64')]

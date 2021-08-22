@@ -1,6 +1,6 @@
 from assembly import AssemblyGCA
-from process import *
 import numpy as np
+
 np.set_printoptions(precision=3, suppress=True)
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
@@ -11,19 +11,21 @@ from sklearn.metrics import r2_score, mean_squared_error
 import time
 
 
-
 def setup_model_pullin():
-    model = AssemblyGCA(drawn_dimensions_filename="fawn.csv", process=SOI())
-    model.gca.x0 = model.gca.x0_pullin()
+    model = AssemblyGCA()
+    # model.gca.x0 = model.gca.x0_pullin()
     model.gca.terminate_simulation = model.gca.pulled_in
+    # model.gca.Fescon = 1.1
     return model
 
 
 def setup_model_release(**kwargs):
     u = [kwargs["V"], kwargs["Fext"]]
-    model = AssemblyGCA(drawn_dimensions_filename="fawn.csv", process=SOI())
+    model = AssemblyGCA()
     # model.gca.k_support = 10.303975
+    # model.gca.x0 = model.gca.x0_release(u)
     model.gca.terminate_simulation = model.gca.released
+    # model.gca.Fescon = 1.1
     return model
 
 
@@ -33,13 +35,14 @@ def setup_inputs(**kwargs):
     return lambda t, x: np.array([V, Fext])
 
 
-def sim_gca(model, u, t_span, verbose=False, **kwargs):
-    f = lambda t, x: model.dx_dt(t, x, u, verbose=verbose, **kwargs)
+def sim_gca(model, u, t_span, verbose=False):
+    f = lambda t, x: model.dx_dt(t, x, u, verbose=verbose)
     x0 = model.x0()
     terminate_simulation = lambda t, x: model.terminate_simulation(t, x)
     terminate_simulation.terminal = True
 
-    sol = solve_ivp(f, t_span, x0, events=terminate_simulation, dense_output=True, max_step=0.25e-6) #, method="LSODA")
+    sol = solve_ivp(f, t_span, x0, events=[terminate_simulation], dense_output=True,
+                    max_step=0.25e-6)  # , method="LSODA")
     return sol
 
 
@@ -54,11 +57,13 @@ def setup_plot(len_x, len_y, plt_title=None, x_label="", y_label=""):
 
 
 def plot_data(fig, axs, pullin_V, pullin_avg, pullin_std, release_V, release_avg, release_std, labels):
-    nx, ny = 4, 2
+    nx, ny = 3, 3
     for idx in range(nx):
         for idy in range(ny):
+            # i = nx*idy + idx
+            # ax = axs[idy, idx]
             i = ny*idx + idy
-            print(idx, idy, i)
+            # print(idx, idy, i)  # Confirms that I've ordered the data plots correctly
             ax = axs[idx, idy]
             ax.errorbar(pullin_V[i], pullin_avg[i], pullin_std[i], fmt='b.', capsize=3)
             ax.errorbar(release_V[i], release_avg[i], release_std[i], fmt='r.', capsize=3)
@@ -69,21 +74,22 @@ def plot_data(fig, axs, pullin_V, pullin_avg, pullin_std, release_V, release_avg
 
 if __name__ == "__main__":
     now = datetime.now()
-    name_clarifier = "_V_supportW_release"
+    name_clarifier = "_V_fingerL_pullin_normalFes_fixedKsupport"
     timestamp = now.strftime("%Y%m%d_%H_%M_%S") + name_clarifier
     print(timestamp)
 
     model = setup_model_pullin()
-    t_span = [0, 400e-6]
+    t_span = [0, 200e-6]
     Fext = 0
 
-    data = loadmat("data/20180208_fawn_gca_V_fingerL_pullin_release.mat")
-    # fingerL_values = np.ndarray.flatten(data["LARR"])*1e-6  # Length = 9
-    supportW_values = np.array([2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5])*1e-6
+    data = loadmat("../data/20180208_fawn_gca_V_fingerL_pullin_release.mat")
+    fingerL_values = np.ndarray.flatten(data["LARR"])*1e-6  # Length = 9
 
     V_values = np.arange(20, 105, 5)
     # latexify(fig_width=6, columns=3)
-    fig, axs = setup_plot(4, 2, x_label="Voltage (V)", y_label="Pull-in Time (us)")
+    fig, axs = setup_plot(3, 3, x_label="Voltage (V)", y_label="Pull-in Time (us)")
+    axs[2, 1].set_xlabel("Voltage (V)")
+    axs[1, 0].set_ylabel("Time (us)")
 
     pullin_V = []
     pullin_avg = []
@@ -96,29 +102,26 @@ if __name__ == "__main__":
     r2_scores_release = []
     rmse_pullin = []
     rmse_release = []
-    for i in range(1, len(supportW_values) + 1):
-        pullin_V.append(np.ndarray.flatten(data["V{}_Arr2".format(i)]))
-        pullin_avg.append(np.ndarray.flatten(data["tmeas{}_Arr2".format(i)]))
-        pullin_std.append(np.ndarray.flatten(data["err{}_Arr2".format(i)]))
-        release_V.append(np.ndarray.flatten(data["V{}_Arr2_r".format(i)]))
-        release_avg.append(np.ndarray.flatten(data["tmeas{}_Arr2_r".format(i)]))
-        release_std.append(np.ndarray.flatten(data["err{}_Arr2_r".format(i)]))
-        labels.append(r"$w_{s}$=%0.1f$\mu$m"%(supportW_values[i - 1]*1e6))
+    for i in range(1, len(fingerL_values) + 1):
+        pullin_V.append(np.ndarray.flatten(data["V{}_Arr1".format(i)]))
+        pullin_avg.append(np.ndarray.flatten(data["tmeas{}_Arr1".format(i)]))
+        pullin_std.append(np.ndarray.flatten(data["err{}_Arr1".format(i)]))
+        release_V.append(np.ndarray.flatten(data["V{}_Arr1_r".format(i)]))
+        release_avg.append(np.ndarray.flatten(data["tmeas{}_Arr1_r".format(i)]))
+        release_std.append(np.ndarray.flatten(data["err{}_Arr1_r".format(i)]))
+        labels.append(r"L=%0.1f$\mu$m"%(fingerL_values[i - 1]*1e6))
 
     plot_data(fig, axs, pullin_V, pullin_avg, pullin_std, release_V, release_avg, release_std, labels)
 
-    nx, ny = 4, 2
+    nx, ny = 3, 3
     legend_pullin, legend_release = None, None
 
     # Pullin measurements
-    for idy in range(len(supportW_values)):
-        supportW = supportW_values[idy]
-        model.gca.supportW = supportW - 2*model.gca.process.overetch
-        # if supportW < 3.5e-6:
-        #     model.gca.supportW = supportW - 2*model.gca.process.small_overetch
-        # else:
-        #     model.gca.supportW = supportW - 2*model.gca.process.overetch
+    for idy in range(len(fingerL_values)):
+        fingerL = fingerL_values[idy]
+        model.gca.fingerL = fingerL - model.gca.process.overetch
         model.gca.update_dependent_variables()
+        model.gca.x0 = model.gca.x0_pullin()
 
         V_converged = []
         times_converged = []
@@ -138,16 +141,16 @@ if __name__ == "__main__":
         for V in V_test:
             start_time = time.process_time()
             u = setup_inputs(V=V, Fext=Fext)
-            sol = sim_gca(model, u, t_span, Fes_calc_method=2, Fb_calc_method=1)
+            sol = sim_gca(model, u, t_span)
 
             if len(sol.t_events[0]) > 0:
                 V_converged.append(V)
                 times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
-            end_time = time.process_time()
-            print("Runtime for L=", supportW, ", V=", V, "=", end_time - start_time)
-        print(supportW, V_converged, times_converged)
 
-        # axs[idy//ny, idy%ny].plot(V_converged, times_converged)
+            end_time = time.process_time()
+            print("Runtime for L=", fingerL, ", V=", V, "=", end_time - start_time)
+        print(fingerL, V_converged, times_converged)
+
         line, = axs[idy//ny, idy%ny].plot(V_converged, times_converged)
         if idy == ny - 1:
             legend_pullin = line
@@ -163,15 +166,15 @@ if __name__ == "__main__":
                 pred.append(times_converged[idx])
         r2 = r2_score(actual, pred)
         print("Pullin Pred:", pred, "Actual:", actual)
-        print("R2 score for supportW=", supportW, "=", r2)
+        print("R2 score for L=", fingerL, "=", r2)
         r2_scores_pullin.append(r2)
         rmse = mean_squared_error(actual, pred, squared=False)
         rmse_pullin.append(rmse)
-        print("RMSE score for supportW=", supportW, "=", rmse)
+        print("RMSE score for L=", fingerL, "=", rmse)
 
     # Release measurements
-    for idy in range(len(supportW_values)):
-        supportW = supportW_values[idy]
+    for idy in range(len(fingerL_values)):
+        fingerL = fingerL_values[idy]
 
         V_converged = []
         times_converged = []
@@ -182,24 +185,21 @@ if __name__ == "__main__":
         for V in V_test:
             start_time = time.process_time()
             model = setup_model_release(V=V, Fext=Fext)
-            model.gca.supportW = supportW - 2*model.gca.process.overetch
-            # if supportW < 3.5e-6:
-            #     model.gca.supportW = supportW - 2*model.gca.process.small_overetch
-            # else:
-            #     model.gca.supportW = supportW - 2*model.gca.process.overetch
+            model.gca.fingerL = fingerL - model.gca.process.overetch
             model.gca.update_dependent_variables()
             u = [V, Fext]
             model.gca.x0 = model.gca.x0_release(u)
             u = setup_inputs(V=0, Fext=Fext)  # Changed for release
-            sol = sim_gca(model, u, t_span, Fes_calc_method=2, Fb_calc_method=1)
+            sol = sim_gca(model, u, t_span)
 
             if len(sol.t_events[0]) > 0:
                 V_converged.append(V)
                 times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
 
             end_time = time.process_time()
-            print("Runtime for L=", supportW, ", V=", V, "=", end_time - start_time)
+            print("Runtime for L=", fingerL, ", V=", V, "=", end_time - start_time)
         print(times_converged)
+
         # axs[idy//ny, idy%ny].plot(V_converged, times_converged, 'r')
         line, = axs[idy//ny, idy%ny].plot(V_converged, times_converged, 'r')
         if idy == ny - 1:
@@ -215,24 +215,20 @@ if __name__ == "__main__":
                 idx = np.where(V_converged == V)[0][0]
                 pred.append(times_converged[idx])
         r2 = r2_score(actual, pred)
-        print("R2 score for supportW=", supportW, "=", r2)
+        print("Release Pred:", pred, "Actual:", actual)
+        print("R2 score for L=", fingerL, "=", r2)
         r2_scores_release.append(r2)
         rmse = mean_squared_error(actual, pred, squared=False)
         rmse_release.append(rmse)
-        print("RMSE score for supportW=", supportW, "=", rmse)
+        print("RMSE score for L=", fingerL, "=", rmse)
 
-    print("Support W values:", supportW_values)
+    print("Finger L values:", [L*1e6 for L in fingerL_values])
     print("Pullin R2 scores:", r2_scores_pullin, np.mean(r2_scores_pullin), np.std(r2_scores_pullin))
     print("Release R2 scores:", r2_scores_release, np.mean(r2_scores_release), np.std(r2_scores_release))
     print("Pullin RMSE scores:", rmse_pullin, np.mean(rmse_pullin), np.std(rmse_pullin))
     print("Release RMSE scores:", rmse_release, np.mean(rmse_release), np.std(rmse_release))
 
-    # add a big axis, hide frame
-    fig.add_subplot(111, frameon=False)
-    # hide tick and tick label of the big axis
-    plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
-    plt.xlabel("Voltage (V)")
-    plt.ylabel("Time (us)")
+    # axs[0, ny-1].legend([legend_pullin, legend_release], ['Pull-in', 'Release'])
     fig.legend([legend_pullin, legend_release], ['Pull-in', 'Release'], loc='lower right', ncol=2)
 
     plt.tight_layout()

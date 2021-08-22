@@ -75,6 +75,8 @@ class GCA:
         #     L_pawl = 122e-6
         #     I_pawl = w_pawl**3 * self.process.t_SOI / 12
         #     k += 3*Estar*I_pawl/L_pawl**3
+        print(self.spineA*self.process.t_SOI*self.process.density)
+
         return self.Fkcon*k*x
 
     def Fb(self, x, u, calc_method=2):
@@ -385,5 +387,5 @@ class GCA:
 
 
 if __name__ == "__main__":
-    gca = GCA("fawn.csv")
+    gca = GCA("layouts/fawn.csv")
     print(gca.process.overetch)
