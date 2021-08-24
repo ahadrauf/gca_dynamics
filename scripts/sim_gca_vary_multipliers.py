@@ -4,11 +4,11 @@ from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
 from scipy.io import loadmat, savemat
 from datetime import datetime
-from utils import *
+from process import *
 
 
 def setup_model_pullin():
-    model = AssemblyGCA()
+    model = AssemblyGCA(drawn_dimensions_filename="../layouts/fawn.csv", process=SOI())
     model.gca.x0 = model.gca.x0_pullin()
     model.gca.terminate_simulation = model.gca.pulled_in
     return model
@@ -16,7 +16,7 @@ def setup_model_pullin():
 
 def setup_model_release(**kwargs):
     u = [kwargs["V"], kwargs["Fext"]]
-    model = AssemblyGCA()
+    model = AssemblyGCA(drawn_dimensions_filename="../layouts/fawn.csv", process=SOI())
     # model.gca.k_support = 10.303975
     if "Fescon" in kwargs:
         model.gca.Fescon = kwargs["Fescon"]
@@ -39,7 +39,8 @@ def sim_gca(model, u, t_span, verbose=False):
     terminate_simulation = lambda t, x: model.terminate_simulation(t, x)
     terminate_simulation.terminal = True
 
-    sol = solve_ivp(f, t_span, x0, events=[terminate_simulation], dense_output=True, max_step=0.25e-6) #, method="LSODA")
+    sol = solve_ivp(f, t_span, x0, events=[terminate_simulation], dense_output=True,
+                    max_step=0.25e-6)  # , method="LSODA")
     return sol
 
 
@@ -53,25 +54,20 @@ def setup_plot(len_x, len_y, plt_title=None, x_label="", y_label=""):
         fig.add_subplot(111, frameon=False)
         # hide tick and tick label of the big axis
         plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
-        plt.xlabel(x_label)
-        plt.ylabel(y_label)
+        plt.xlabel(x_label, fontsize=12)
+        plt.ylabel(y_label, fontsize=12)
     return fig, axs
 
 
-def plot_data(fig, axs, pullin_V, pullin_avg, pullin_std, release_V, release_avg, release_std, labels):
-    nx, ny = 4, 2
-    for idx in range(nx):
-        for idy in range(ny):
-            i = ny*idx + idy
-            print(idx, idy, i)
-            ax = axs[idx, idy]
-            # ax.errorbar(pullin_V[i], pullin_avg[i], pullin_std[i], fmt='b.', capsize=3)
-            ax.errorbar(release_V[i], release_avg[i], release_std[i], fmt='r.', capsize=3)
-            ax.annotate(labels[i], xy=(1, 1), xycoords='axes fraction', fontsize=10,
-                        xytext=(-2, -2), textcoords='offset points',
-                        ha='right', va='top')
-
-    # plt.legend()
+def display_stats(x_converged, times_converged, label):
+    # Get helpful stats for paper
+    print(label, x_converged, times_converged)
+    time_50_up = times_converged[np.where(np.isclose(x_converged, 1.5))[0][0]]
+    time_nominal = times_converged[np.where(np.isclose(x_converged, 1.))[0][0]]
+    time_50_down = times_converged[np.where(np.isclose(x_converged, 0.5))[0][0]]
+    print("{}: con=0.5: {} (Ratio: {}), con=1: {}, con=1.5: {} (Ratio: {})".format(
+        label, time_50_down, time_nominal/time_50_down, time_nominal, time_50_up, time_nominal/time_50_up
+    ))
 
 
 if __name__ == "__main__":
@@ -85,10 +81,10 @@ if __name__ == "__main__":
     Fext = 0.
 
     V = 60
-    mcon_range = np.arange(0.1, 2.1, 0.1)
-    Fescon_range = np.arange(0.1, 2.1, 0.1)
-    Fbcon_range = np.arange(0.1, 2.1, 0.1)
-    Fkcon_range = np.arange(0.1, 2.1, 0.1)
+    mcon_range = np.arange(0.1, 2.1, 0.01)
+    Fescon_range = np.arange(0.1, 2.1, 0.01)
+    Fbcon_range = np.arange(0.1, 2.1, 0.01)
+    Fkcon_range = np.arange(0.1, 2.1, 0.01)
     # latexify(fig_width=6, columns=3)
     fig, axs = setup_plot(2, 2, x_label="Scaling Variable", y_label="Time (us)")
 
@@ -96,6 +92,7 @@ if __name__ == "__main__":
 
     ##### ax[0, 0] = Varying mass
     # Pullin
+    print("Nominal mass:", model.gca.spineA*model.gca.process.t_SOI*model.gca.process.density)
     x_converged = []
     times_converged = []
     for mcon in mcon_range:
@@ -108,6 +105,7 @@ if __name__ == "__main__":
             x_converged.append(mcon)
             times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
     axs[0, 0].plot(x_converged, times_converged, 'b')
+    display_stats(x_converged, times_converged, "Pullin mcon")
 
     # Release
     x_converged = []
@@ -120,11 +118,18 @@ if __name__ == "__main__":
 
         if len(sol.t_events[0]) > 0:
             x_converged.append(mcon)
-            times_converged.append(sol.t_events[0][0] * 1e6)  # us conversion
+            times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
     axs[0, 0].plot(x_converged, times_converged, 'r')
     # axs[0, 0].legend(["Pull-in", "Release"])
-    axs[0, 0].set_title("Varying Mass")
+    axs[0, 0].set_title(r"Varying $m_{GCA}$", fontsize=12)
     axs[0, 0].axvline(1., color='k', linestyle='--')
+    display_stats(x_converged, times_converged, "Release mcon")
+
+    model = setup_model_pullin()
+    m_nom = model.gca.spineA*model.gca.process.t_SOI*model.gca.process.density
+    label = r"$m_{GCA}=$" + "{:0.1f}".format(m_nom*1e9) + r' $\mu$g'
+    axs[0, 0].annotate(label, xy=(0.52, 0.96), xycoords='axes fraction', color='k',
+                       xytext=(0, 0), textcoords='offset points', ha='left', va='top')
 
     ##### ax[0, 1] = Varying Fes
     # Pullin
@@ -138,8 +143,9 @@ if __name__ == "__main__":
 
         if len(sol.t_events[0]) > 0:
             x_converged.append(Fescon)
-            times_converged.append(sol.t_events[0][0] * 1e6)  # us conversion
+            times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
     axs[0, 1].plot(x_converged, times_converged, 'b')
+    display_stats(x_converged, times_converged, "Pullin Fescon")
 
     # Release
     x_converged = []
@@ -150,11 +156,17 @@ if __name__ == "__main__":
         sol = sim_gca(model, u, t_span)
         if len(sol.t_events[0]) > 0:
             x_converged.append(Fescon)
-            times_converged.append(sol.t_events[0][0] * 1e6)  # us conversion
+            times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
     axs[0, 1].plot(x_converged, times_converged, 'r')
     # axs[0, 1].legend(["Pull-in", "Release"])
-    axs[0, 1].set_title(r"Varying $F_{es}$")
+    axs[0, 1].set_title(r"Varying $F_{es}$", fontsize=12)
     axs[0, 1].axvline(1., color='k', linestyle='--')
+    display_stats(x_converged, times_converged, "Release Fescon")
+
+    model = setup_model_pullin()
+    label = r"$\epsilon_r$=1"
+    axs[0, 1].annotate(label, xy=(0.52, 0.96), xycoords='axes fraction', color='k',
+                       xytext=(0, 0), textcoords='offset points', ha='left', va='top')
 
     ##### ax[1, 0] = Varying Fb
     # Pullin
@@ -168,8 +180,9 @@ if __name__ == "__main__":
 
         if len(sol.t_events[0]) > 0:
             x_converged.append(Fbcon)
-            times_converged.append(sol.t_events[0][0] * 1e6)  # us conversion
+            times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
     axs[1, 0].plot(x_converged, times_converged, 'b')
+    display_stats(x_converged, times_converged, "Pullin Fbkcon")
 
     # Release
     x_converged = []
@@ -182,11 +195,17 @@ if __name__ == "__main__":
 
         if len(sol.t_events[0]) > 0:
             x_converged.append(Fbcon)
-            times_converged.append(sol.t_events[0][0] * 1e6)  # us conversion
+            times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
     axs[1, 0].plot(x_converged, times_converged, 'r')
     # axs[1, 0].legend(["Pull-in", "Release"])
-    axs[1, 0].set_title(r"Varying $F_b$")
+    axs[1, 0].set_title(r"Varying $F_b$", fontsize=12)
     axs[1, 0].axvline(1., color='k', linestyle='--')
+    display_stats(x_converged, times_converged, "Release Fbcon")
+
+    model = setup_model_pullin()
+    label = r"$\mu$=18.5 $\mu$Pa$\cdot$s"
+    axs[1, 0].annotate(label, xy=(0.45, 0.96), xycoords='axes fraction', color='k',
+                       xytext=(0, 0), textcoords='offset points', ha='right', va='top')
 
     ##### ax[1, 1] = Varying Fk
     # Pullin
@@ -200,8 +219,9 @@ if __name__ == "__main__":
 
         if len(sol.t_events[0]) > 0:
             x_converged.append(Fkcon)
-            times_converged.append(sol.t_events[0][0] * 1e6)  # us conversion
+            times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
     l1 = axs[1, 1].plot(x_converged, times_converged, 'b')
+    display_stats(x_converged, times_converged, "Pullin Fkcon")
 
     # Release
     x_converged = []
@@ -214,12 +234,18 @@ if __name__ == "__main__":
 
         if len(sol.t_events[0]) > 0:
             x_converged.append(Fkcon)
-            times_converged.append(sol.t_events[0][0] * 1e6)  # us conversion
+            times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
     l2 = axs[1, 1].plot(x_converged, times_converged, 'r')
     axs[1, 1].legend(["Pull-in", "Release"])
-    axs[1, 1].set_title(r"Varying $F_k$")
+    axs[1, 1].set_title(r"Varying $F_k$", fontsize=12)
     axs[1, 1].axvline(1., color='k', linestyle='--')
+    display_stats(x_converged, times_converged, "Release Fkcon")
 
+    model = setup_model_pullin()
+    k_nom = model.gca.k_support
+    label = r"$k=$" + "{:0.1f}".format(k_nom) + ' N/m'
+    axs[1, 1].annotate(label, xy=(0.52, 0.6), xycoords='axes fraction', color='k',
+                       xytext=(0, 0), textcoords='offset points', ha='left', va='top')
 
     plt.tight_layout()
     plt.savefig("../figures/" + timestamp + ".png")

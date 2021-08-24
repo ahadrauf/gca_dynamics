@@ -97,63 +97,84 @@ if __name__ == '__main__':
     #                 arrowprops=dict(arrowstyle='->', color='green'), color='green')
 
     ##################### Release Scope Trace #####################
-    t_release_range = [-10, 30]  # us
-    t_release_zoomed_out_range = [-220*(10/30), 220]
-    idx = np.where((t_release_range[0] <= t_release) & (t_release <= t_release_range[1]))
-    idx_zoomed_out = np.where((t_release_zoomed_out_range[0] <= t_release) & (t_release <= t_release_zoomed_out_range[1]))
-    t_release_plot = t_release[idx]
-    Vdrive_release_plot = Vdrive_release[idx]
-    Vsense_release_plot = Vsense_release[idx]
-    t_release_zoomed_out_plot = t_release[idx_zoomed_out]
-    Vsense_release_zoomed_out_plot = Vsense_release[idx_zoomed_out]
-    fig, axs = setup_plot(3, 1, [t_release_plot, t_release_plot, t_release_zoomed_out_plot],
-                          [Vdrive_release_plot, Vsense_release_plot, Vsense_release_zoomed_out_plot],
-                          r"Time ($\mu$s)", "Voltage (V)", "Release Scope Trace")
-    axs[0].annotate("Actuation Signal", xy=(0.98, 0.98), xycoords='axes fraction', fontsize=14, color='blue',
-                    xytext=(-2, -2), textcoords='offset points', ha='right', va='top')
-    min_pos_t_idx = np.argmin(np.abs(t_release_plot))
-    axs[0].annotate("Release Voltage", xy=(t_release_plot[min_pos_t_idx], Vdrive_release_plot[min_pos_t_idx]),
-                    xytext=(30, 0), textcoords='offset points', ha='left', va='center', fontsize=14,
-                    arrowprops=dict(arrowstyle='->'))
-    print("Min t", min_pos_t_idx, t_release_plot[min_pos_t_idx], Vdrive_release_plot[min_pos_t_idx])
-
-    # Labels for Sense Signal
-    axs[1].annotate("Sense Signal", xy=(0.035, 0.035), xycoords='axes fraction', fontsize=14, color='red',
-                    xytext=(-2, -2), textcoords='offset points', ha='left', va='bottom')
-    axs[1].annotate("Ringing", xy=(t_release_plot[min_pos_t_idx], Vsense_release_plot[min_pos_t_idx]),
-                    xytext=(-20, -20), textcoords='offset points', ha='center', va='top', fontsize=14,
-                    arrowprops=dict(arrowstyle='->'))
-    max_sense = Vsense_release_plot[0]  # np.max(Vsense_release_plot)
-    signal_drop_idx = np.where(Vsense_release_plot <= 0.9*max_sense)[0][2]
-    print(t_release_plot[signal_drop_idx], Vsense_release_plot[signal_drop_idx])
-    axs[1].annotate("Signal Drop", xy=(t_release_plot[signal_drop_idx], Vsense_release_plot[signal_drop_idx]),
-                    xytext=(-20, -30), textcoords='offset points', ha='right', va='top', fontsize=14,
-                    arrowprops=dict(arrowstyle='->'))
-
-    # Release Time Indicator in the Middle
-    x_frac_min_pos_t = (0.0 - axs[0].get_xlim()[0])/(axs[0].get_xlim()[1] - axs[0].get_xlim()[0])
-    x_frac_signal_drop = (t_release_plot[signal_drop_idx] - axs[0].get_xlim()[0])/(axs[0].get_xlim()[1] - axs[0].get_xlim()[0])
-    axs[0].annotate("Release Time", xy=(x_frac_signal_drop, -0.3), xycoords='axes fraction',
-                    xytext=(-47, 0), textcoords='offset points', ha='right', va='center', fontsize=14,
-                    arrowprops=dict(arrowstyle='->', color='green'), color='green')
-    axs[0].annotate("", xy=(x_frac_min_pos_t, -0.3), xycoords='axes fraction',
-                    xytext=(47, 0), textcoords='offset points', ha='left', va='center', fontsize=14,
-                    arrowprops=dict(arrowstyle='->', color='green'), color='green')
-
-    # Zoomed out plot
-    axs[2].annotate("Sense Signal\n(Zoomed Out)", xy=(0.035, 0.035), xycoords='axes fraction', fontsize=14, color='red',
-                    xytext=(-2, -2), textcoords='offset points', ha='left', va='bottom')
-    idx_switch_bounce = np.where((30 <= t_release) & (t_release <= 60))
-    first_switch_bounce = np.argmax(Vsense_release[idx_switch_bounce]) + np.min(idx_switch_bounce)
-    print(first_switch_bounce, t_release[first_switch_bounce], Vsense_release[first_switch_bounce])
-    axs[2].annotate("Switch Bounce", xy=(t_release[first_switch_bounce], Vsense_release[first_switch_bounce]),
-                    xytext=(10, 30), textcoords='offset points', ha='left', va='center', fontsize=14,
-                    arrowprops=dict(arrowstyle='->'))
+    # t_release_range = [-10, 30]  # us
+    # t_release_zoomed_out_range = [-220*(10/30), 220]
+    # idx = np.where((t_release_range[0] <= t_release) & (t_release <= t_release_range[1]))
+    # idx_zoomed_out = np.where((t_release_zoomed_out_range[0] <= t_release) & (t_release <= t_release_zoomed_out_range[1]))
+    # t_release_plot = t_release[idx]
+    # Vdrive_release_plot = Vdrive_release[idx]
+    # Vsense_release_plot = Vsense_release[idx]
+    # t_release_zoomed_out_plot = t_release[idx_zoomed_out]
+    # Vsense_release_zoomed_out_plot = Vsense_release[idx_zoomed_out]
+    # fig, axs = setup_plot(3, 1, [t_release_plot, t_release_plot, t_release_zoomed_out_plot],
+    #                       [Vdrive_release_plot, Vsense_release_plot, Vsense_release_zoomed_out_plot],
+    #                       r"Time ($\mu$s)", "Voltage (V)", "Release Scope Trace")
+    # axs[0].annotate("Actuation Signal", xy=(0.98, 0.98), xycoords='axes fraction', fontsize=14, color='blue',
+    #                 xytext=(-2, -2), textcoords='offset points', ha='right', va='top')
+    # min_pos_t_idx = np.argmin(np.abs(t_release_plot))
+    # axs[0].annotate("Release Voltage", xy=(t_release_plot[min_pos_t_idx], Vdrive_release_plot[min_pos_t_idx]),
+    #                 xytext=(30, 0), textcoords='offset points', ha='left', va='center', fontsize=14,
+    #                 arrowprops=dict(arrowstyle='->'))
+    # print("Min t", min_pos_t_idx, t_release_plot[min_pos_t_idx], Vdrive_release_plot[min_pos_t_idx])
+    #
+    # # Labels for Sense Signal
+    # axs[1].annotate("Sense Signal", xy=(0.035, 0.035), xycoords='axes fraction', fontsize=14, color='red',
+    #                 xytext=(-2, -2), textcoords='offset points', ha='left', va='bottom')
+    # axs[1].annotate("Ringing", xy=(t_release_plot[min_pos_t_idx], Vsense_release_plot[min_pos_t_idx]),
+    #                 xytext=(-20, -20), textcoords='offset points', ha='center', va='top', fontsize=14,
+    #                 arrowprops=dict(arrowstyle='->'))
+    # max_sense = Vsense_release_plot[0]  # np.max(Vsense_release_plot)
+    # signal_drop_idx = np.where(Vsense_release_plot <= 0.9*max_sense)[0][2]
+    # print(t_release_plot[signal_drop_idx], Vsense_release_plot[signal_drop_idx])
+    # axs[1].annotate("Signal Drop", xy=(t_release_plot[signal_drop_idx], Vsense_release_plot[signal_drop_idx]),
+    #                 xytext=(-20, -30), textcoords='offset points', ha='right', va='top', fontsize=14,
+    #                 arrowprops=dict(arrowstyle='->'))
+    #
+    # # Release Time Indicator in the Middle
+    # x_frac_min_pos_t = (0.0 - axs[0].get_xlim()[0])/(axs[0].get_xlim()[1] - axs[0].get_xlim()[0])
+    # x_frac_signal_drop = (t_release_plot[signal_drop_idx] - axs[0].get_xlim()[0])/(axs[0].get_xlim()[1] - axs[0].get_xlim()[0])
+    # axs[0].annotate("Release Time", xy=(x_frac_signal_drop, -0.3), xycoords='axes fraction',
+    #                 xytext=(-47, 0), textcoords='offset points', ha='right', va='center', fontsize=14,
+    #                 arrowprops=dict(arrowstyle='->', color='green'), color='green')
+    # axs[0].annotate("", xy=(x_frac_min_pos_t, -0.3), xycoords='axes fraction',
+    #                 xytext=(47, 0), textcoords='offset points', ha='left', va='center', fontsize=14,
+    #                 arrowprops=dict(arrowstyle='->', color='green'), color='green')
+    #
+    # # Zoomed out plot
+    # axs[2].annotate("Sense Signal\n(Zoomed Out)", xy=(0.035, 0.035), xycoords='axes fraction', fontsize=14, color='red',
+    #                 xytext=(-2, -2), textcoords='offset points', ha='left', va='bottom')
+    # idx_switch_bounce = np.where((30 <= t_release) & (t_release <= 60))
+    # first_switch_bounce = np.argmax(Vsense_release[idx_switch_bounce]) + np.min(idx_switch_bounce)
+    # print(first_switch_bounce, t_release[first_switch_bounce], Vsense_release[first_switch_bounce])
+    # axs[2].annotate("Switch Bounce", xy=(t_release[first_switch_bounce], Vsense_release[first_switch_bounce]),
+    #                 xytext=(10, 30), textcoords='offset points', ha='left', va='center', fontsize=14,
+    #                 arrowprops=dict(arrowstyle='->'))
+    # fig.set_figheight(7.3)
 
     ##################### Release Scope Trace (Zoomed Out) #####################
+    t_release_zoomed_out_range = [-220*(10/30), 220]
+    idx_zoomed_out = np.where(
+        (t_release_zoomed_out_range[0] <= t_release) & (t_release <= t_release_zoomed_out_range[1]))
+    t_release_zoomed_out_plot = t_release[idx_zoomed_out]
+    Vsense_release_zoomed_out_plot = Vsense_release[idx_zoomed_out]
+    plt.plot(t_release_zoomed_out_plot, Vsense_release_zoomed_out_plot, 'r-')
+    plt.xlabel(r"Time ($\mu$s)")
+    plt.ylabel("Voltage (V)")
+    plt.title("Release Scope Zoomed Out Trace")
 
-    fig.set_figheight(7.3)
-    fig.tight_layout()
-    plt.savefig("figures/" + timestamp + ".png")
-    plt.savefig("figures/" + timestamp + ".pdf")
+    # Zoomed out plot
+    # plt.annotate("Sense Signal\n(Zoomed Out)", xy=(0.035, 0.035), xycoords='axes fraction', fontsize=14, color='red',
+    #                 xytext=(-2, -2), textcoords='offset points', ha='left', va='bottom')
+    # idx_switch_bounce = np.where((30 <= t_release) & (t_release <= 60))
+    # first_switch_bounce = np.argmax(Vsense_release[idx_switch_bounce]) + np.min(idx_switch_bounce)
+    # print(first_switch_bounce, t_release[first_switch_bounce], Vsense_release[first_switch_bounce])
+    # plt.annotate("Switch Bounce", xy=(t_release[first_switch_bounce], Vsense_release[first_switch_bounce]),
+    #                 xytext=(10, 30), textcoords='offset points', ha='left', va='center', fontsize=14,
+    #                 arrowprops=dict(arrowstyle='->'))
+
+
+    # fig.tight_layout()
+    plt.tight_layout()
+    # plt.savefig("figures/" + timestamp + ".png")
+    # plt.savefig("figures/" + timestamp + ".pdf")
     plt.show()

@@ -8,10 +8,6 @@ from process import *
 def setup_model_pullin():
     model = AssemblyGCA(drawn_dimensions_filename="../layouts/fawn.csv", process=SOIwater())
     model.gca.x0 = model.gca.x0_pullin()
-    # model.gca.x0[0] = -(2e-6 + 2*model.gca.process.overetch)
-    # print(model.gca.x0)
-    # print(2e-6 + 2*model.gca.process.overetch)
-    # print(model.gca.x0[0])
     model.gca.terminate_simulation = model.gca.pulled_in
     return model
 
@@ -19,9 +15,6 @@ def setup_model_pullin():
 def setup_model_release(**kwargs):
     u = [kwargs["V"], kwargs["Fext"]]
     model = AssemblyGCA(drawn_dimensions_filename="../layouts/fawn.csv", process=SOI())
-    # model.gca.k_support = 10.303975
-    model.gca.supportW = 2.e-6 - 2*model.gca.process.small_overetch
-    model.gca.update_dependent_variables()
     if "Fescon" in kwargs:
         model.gca.Fescon = kwargs["Fescon"]
     if "Fkcon" in kwargs:
@@ -43,12 +36,12 @@ def setup_inputs(**kwargs):
 
 
 def sim_gca(model, u, t_span):
-    f = lambda t, x: model.dx_dt(t, x, u, verbose=False)
+    f = lambda t, x: model.dx_dt(t, x, u, verbose=False, Fes_calc_method=2, Fb_calc_method=1)
     x0 = model.x0()
     terminate_simulation = lambda t, x: model.terminate_simulation(t, x)
     terminate_simulation.terminal = True
 
-    sol = solve_ivp(f, t_span, x0, events=[terminate_simulation], dense_output=True, max_step=0.05e-6)
+    sol = solve_ivp(f, t_span, x0, events=[terminate_simulation], dense_output=True, max_step=0.5e-6,)
     return sol
 
 
@@ -97,25 +90,14 @@ def plot_solution(sol, t_sim, model, plt_title=None):
 
 
 if __name__ == "__main__":
-    V = 3
+    V = 60
     # Fext = 50e-6
     Fext = 0.
-    model = setup_model_pullin()
-    u = setup_inputs(V=V, Fext=0.)  # Change V=V for pullin, V=0 for release
-    # model = setup_model_release(V=V, Fext=Fext)  # Change for pullin/release
-    # model.gca.Fbcon = 1.
-    # u = setup_inputs(V=0, Fext=0.)  # Change V=V for pullin, V=0 for release
-    # model.gca.add_support_spring(springW=5e-6, springL=594.995e-6, nBeams=16,
-    #                              endcapW=22.889e-6, endcapL=49.441e-6,
-    #                              etchholeSize=8e-6, nEtchHoles=3, nEndCaps=8*2,
-    #                              k=Fext/(385.33e-6 + 2*model.gca.process.overetch))
-    # print(model.gca.k_support)
-    # print(Fext/(385.33e-6 + 2*model.gca.process.overetch))
-    # print("k_support", model.gca.k_support)
+    # model = setup_model_pullin()
+    # u = setup_inputs(V=V, Fext=0.)  # Change V=V for pullin, V=0 for release
+    model = setup_model_release(V=V, Fext=Fext)  # Change for pullin/release
+    u = setup_inputs(V=0, Fext=Fext)  # Change V=V for pullin, V=0 for release
 
-    model.gca.fingerL = 25e-6 - model.gca.process.overetch
-    model.gca.update_dependent_variables()
-    model.gca.x0 = model.gca.x0_pullin()
     t_span = [0, 100e-6]
     sol = sim_gca(model, u, t_span)
     print('End time:', sol.t_events[0]*1e6)

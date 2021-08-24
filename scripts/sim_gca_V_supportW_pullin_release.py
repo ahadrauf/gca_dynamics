@@ -60,7 +60,7 @@ def plot_data(fig, axs, pullin_V, pullin_avg, pullin_std, release_V, release_avg
             i = ny*idx + idy
             print(idx, idy, i)
             ax = axs[idx, idy]
-            ax.errorbar(pullin_V[i], pullin_avg[i], pullin_std[i], fmt='b.', capsize=3)
+            # ax.errorbar(pullin_V[i], pullin_avg[i], pullin_std[i], fmt='b.', capsize=3)
             ax.errorbar(release_V[i], release_avg[i], release_std[i], fmt='r.', capsize=3)
             ax.annotate(labels[i], xy=(1, 1), xycoords='axes fraction', fontsize=10,
                         xytext=(-2, -2), textcoords='offset points',
@@ -92,10 +92,6 @@ if __name__ == "__main__":
     release_avg = []
     release_std = []
     labels = []
-    r2_scores_pullin = []
-    r2_scores_release = []
-    rmse_pullin = []
-    rmse_release = []
     for i in range(1, len(supportW_values) + 1):
         pullin_V.append(np.ndarray.flatten(data["V{}_Arr2".format(i)]))
         pullin_avg.append(np.ndarray.flatten(data["tmeas{}_Arr2".format(i)]))
@@ -110,64 +106,70 @@ if __name__ == "__main__":
     nx, ny = 4, 2
     legend_pullin, legend_release = None, None
 
+    # Simulation metrics
+    pullin_V_results = []
+    pullin_t_results = []
+    release_V_results = []
+    release_t_results = []
+    r2_scores_pullin = []
+    r2_scores_release = []
+    rmse_pullin = []
+    rmse_release = []
+
     # Pullin measurements
-    for idy in range(len(supportW_values)):
-        supportW = supportW_values[idy]
-        model.gca.supportW = supportW - 2*model.gca.process.overetch
-        # if supportW < 3.5e-6:
-        #     model.gca.supportW = supportW - 2*model.gca.process.small_overetch
-        # else:
-        #     model.gca.supportW = supportW - 2*model.gca.process.overetch
-        model.gca.update_dependent_variables()
-
-        V_converged = []
-        times_converged = []
-
-        # V_test = np.sort(np.append(V_values, [pullin_V[idy], pullin_V[idy]+0.2]))  # Add some extra values to test
-        V_test = []
-        V_values = pullin_V[idy]
-        # V_test = list(np.arange(min(V_values), max(V_values) + 1, 1.))
-        for V in V_values:
-            # V_test.append(V - 0.1)
-            V_test.append(V)
-            # V_test.append(V + 0.2)
-            # V_test.append(V + 0.5)
-            # V_test.append(V + 1)
-            # V_test.append(V + 1.5)
-            # V_test.append(V + 2)
-        for V in V_test:
-            start_time = time.process_time()
-            u = setup_inputs(V=V, Fext=Fext)
-            sol = sim_gca(model, u, t_span, Fes_calc_method=2, Fb_calc_method=1)
-
-            if len(sol.t_events[0]) > 0:
-                V_converged.append(V)
-                times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
-            end_time = time.process_time()
-            print("Runtime for L=", supportW, ", V=", V, "=", end_time - start_time)
-        print(supportW, V_converged, times_converged)
-
-        # axs[idy//ny, idy%ny].plot(V_converged, times_converged)
-        line, = axs[idy//ny, idy%ny].plot(V_converged, times_converged)
-        if idy == ny - 1:
-            legend_pullin = line
-
-        # Calculate the r2 score
-        actual = []
-        pred = []
-        for V in V_converged:
-            if V in pullin_V[idy]:
-                idx = np.where(pullin_V[idy] == V)[0][0]
-                actual.append(pullin_avg[idy][idx])
-                idx = np.where(V_converged == V)[0][0]
-                pred.append(times_converged[idx])
-        r2 = r2_score(actual, pred)
-        print("Pullin Pred:", pred, "Actual:", actual)
-        print("R2 score for supportW=", supportW, "=", r2)
-        r2_scores_pullin.append(r2)
-        rmse = mean_squared_error(actual, pred, squared=False)
-        rmse_pullin.append(rmse)
-        print("RMSE score for supportW=", supportW, "=", rmse)
+    # for idy in range(len(supportW_values)):
+    #     supportW = supportW_values[idy]
+    #     model.gca.supportW = supportW - 2*model.gca.process.overetch
+    #     # if supportW < 3.5e-6:
+    #     #     model.gca.supportW = supportW - 2*model.gca.process.small_overetch
+    #     # else:
+    #     #     model.gca.supportW = supportW - 2*model.gca.process.overetch
+    #     model.gca.update_dependent_variables()
+    #
+    #     V_converged = []
+    #     times_converged = []
+    #
+    #     # V_test = np.sort(np.append(V_values, [pullin_V[idy], pullin_V[idy]+0.2]))  # Add some extra values to test
+    #     V_test = []
+    #     V_values = pullin_V[idy]
+    #     # V_test = list(np.arange(min(V_values), max(V_values) + 1, 1.))
+    #     for V in V_values:
+    #         V_test.append(V)
+    #     for V in V_test:
+    #         start_time = time.process_time()
+    #         u = setup_inputs(V=V, Fext=Fext)
+    #         sol = sim_gca(model, u, t_span, Fes_calc_method=2, Fb_calc_method=1)
+    #
+    #         if len(sol.t_events[0]) > 0:
+    #             V_converged.append(V)
+    #             times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
+    #         end_time = time.process_time()
+    #         print("Runtime for L=", supportW, ", V=", V, "=", end_time - start_time)
+    #     print(supportW, V_converged, times_converged)
+    #
+    #     # axs[idy//ny, idy%ny].plot(V_converged, times_converged)
+    #     line, = axs[idy//ny, idy%ny].plot(V_converged, times_converged)
+    #     if idy == ny - 1:
+    #         legend_pullin = line
+    #     pullin_V_results.append(V_converged)
+    #     pullin_t_results.append(times_converged)
+    #
+    #     # Calculate the r2 score
+    #     actual = []
+    #     pred = []
+    #     for V in V_converged:
+    #         if V in pullin_V[idy]:
+    #             idx = np.where(pullin_V[idy] == V)[0][0]
+    #             actual.append(pullin_avg[idy][idx])
+    #             idx = np.where(V_converged == V)[0][0]
+    #             pred.append(times_converged[idx])
+    #     r2 = r2_score(actual, pred)
+    #     print("Pullin Pred:", pred, "Actual:", actual)
+    #     print("R2 score for supportW=", supportW, "=", r2)
+    #     r2_scores_pullin.append(r2)
+    #     rmse = mean_squared_error(actual, pred, squared=False)
+    #     rmse_pullin.append(rmse)
+    #     print("RMSE score for supportW=", supportW, "=", rmse)
 
     # Release measurements
     for idy in range(len(supportW_values)):
@@ -204,6 +206,8 @@ if __name__ == "__main__":
         line, = axs[idy//ny, idy%ny].plot(V_converged, times_converged, 'r')
         if idy == ny - 1:
             legend_release = line
+        release_V_results.append(V_converged)
+        release_t_results.append(times_converged)
 
         # Calculate the r2 score
         actual = []
@@ -222,9 +226,9 @@ if __name__ == "__main__":
         print("RMSE score for supportW=", supportW, "=", rmse)
 
     print("Support W values:", supportW_values)
-    print("Pullin R2 scores:", r2_scores_pullin, np.mean(r2_scores_pullin), np.std(r2_scores_pullin))
+    # print("Pullin R2 scores:", r2_scores_pullin, np.mean(r2_scores_pullin), np.std(r2_scores_pullin))
     print("Release R2 scores:", r2_scores_release, np.mean(r2_scores_release), np.std(r2_scores_release))
-    print("Pullin RMSE scores:", rmse_pullin, np.mean(rmse_pullin), np.std(rmse_pullin))
+    # print("Pullin RMSE scores:", rmse_pullin, np.mean(rmse_pullin), np.std(rmse_pullin))
     print("Release RMSE scores:", rmse_release, np.mean(rmse_release), np.std(rmse_release))
 
     # add a big axis, hide frame
@@ -233,9 +237,19 @@ if __name__ == "__main__":
     plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
     plt.xlabel("Voltage (V)")
     plt.ylabel("Time (us)")
-    fig.legend([legend_pullin, legend_release], ['Pull-in', 'Release'], loc='lower right', ncol=2)
+    # fig.legend([legend_pullin], ['Pull-in'], loc='lower right', ncol=2)
+    fig.legend([legend_release], ['Release'], loc='lower right', ncol=2)
+    # fig.legend([legend_pullin, legend_release], ['Pull-in', 'Release'], loc='lower right', ncol=2)
 
     plt.tight_layout()
     plt.savefig("../figures/" + timestamp + ".png")
     plt.savefig("../figures/" + timestamp + ".pdf")
+
+    np.save('../data/' + timestamp + '.npy', [model.process, supportW_values, pullin_V, pullin_avg, pullin_std,
+                                              release_V, release_avg, release_std,
+                                              pullin_V_results, pullin_t_results, release_V_results, release_t_results,
+                                              r2_scores_pullin, r2_scores_release, rmse_pullin, rmse_release,
+                                              fig],
+            allow_pickle=True)
+
     plt.show()

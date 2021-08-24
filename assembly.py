@@ -42,7 +42,7 @@ class Assembly:
 
 
 class AssemblyGCA(Assembly):
-    def __init__(self, drawn_dimensions_filename="fawn.csv", process=SOI(), **kwargs):
+    def __init__(self, drawn_dimensions_filename="../layouts/fawn.csv", process=SOI(), **kwargs):
         Assembly.__init__(self, process=process, **kwargs)
         self.gca = GCA(drawn_dimensions_filename=drawn_dimensions_filename, process=process)
         self.parts = [self.gca]

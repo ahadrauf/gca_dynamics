@@ -80,12 +80,13 @@ if __name__ == "__main__":
     model = setup_model_pullin()
     t_span = [0, 200e-6]
     Fext = 0
+    nx, ny = 3, 3
 
     data = loadmat("../data/20180208_fawn_gca_V_fingerL_pullin_release.mat")
     fingerL_values = np.ndarray.flatten(data["LARR"])*1e-6  # Length = 9
 
     # latexify(fig_width=6, columns=3)
-    fig, axs = setup_plot(3, 3, x_label="Voltage (V)", y_label="Pull-in Time (us)")
+    fig, axs = setup_plot(nx, ny, x_label="Voltage (V)", y_label="Pull-in Time (us)")
     axs[2, 1].set_xlabel("Voltage (V)")
     axs[1, 0].set_ylabel("Time (us)")
 
@@ -110,8 +111,14 @@ if __name__ == "__main__":
         labels.append(r"L=%0.1f$\mu$m"%(fingerL_values[i - 1]*1e6))
 
     # plot_data(fig, axs, pullin_V, pullin_avg, pullin_std, release_V, release_avg, release_std, labels)
+    for idx in range(nx):
+        for idy in range(ny):
+            i = ny*idx + idy
+            ax = axs[idx, idy]
+            ax.annotate(labels[i], xy=(1, 1), xycoords='axes fraction', fontsize=10,
+                        xytext=(-2, -2), textcoords='offset points',
+                        ha='right', va='top')
 
-    nx, ny = 3, 3
     legend_pullin, legend_release = None, None
 
     # Pullin measurements
@@ -125,11 +132,10 @@ if __name__ == "__main__":
         times_converged = []
 
         # V_test = np.sort(np.append(V_values, [pullin_V[idy], pullin_V[idy]+0.2]))  # Add some extra values to test
-        V_test = []
-        V_values = pullin_V[idy]
+        # V_test = []
+        # V_values = pullin_V[idy]
+        V_test = np.arange(20, 91, 5)
         # V_test = list(np.arange(min(V_values), max(V_values) + 1, 1.))
-        for V in V_values:
-            V_test.append(V)
         for V in V_test:
             start_time = time.process_time()
             u = setup_inputs(V=V, Fext=Fext)
@@ -171,8 +177,9 @@ if __name__ == "__main__":
         V_converged = []
         times_converged = []
 
-        V_values = release_V[idy]
-        V_test = V_values
+        # V_values = release_V[idy]
+        # V_test = V_values
+        V_test = np.arange(20, 91, 5)
         # V_test = list(np.arange(min(V_values), max(V_values) + 1, 1.))
         for V in V_test:
             start_time = time.process_time()

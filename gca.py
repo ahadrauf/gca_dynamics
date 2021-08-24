@@ -1,10 +1,9 @@
 from process import SOI
 import numpy as np
-
-np.set_printoptions(precision=3, suppress=True)
 from scipy.integrate import quad
 import csv
 import matplotlib.pyplot as plt
+np.set_printoptions(precision=3, suppress=True)
 
 
 class GCA:
@@ -108,6 +107,8 @@ class GCA:
             return bsf
 
         def bsf_calc3():
+            # Source: M. Li, V. Rouf, D. Horsley, “Substrate Effect in Squeeze Film Damping of Lateral Oscillating
+            # Microstructures”, Digest Tech. MEMS ’13 Conference, Taipei, January 20-24, 2013, pp. 393-396.
             t_SOI_primef = t_SOI + 0.81*(gf - x + 0.94*self.process.mfp)
             t_SOI_primeb = t_SOI + 0.81*(gb + x + 0.94*self.process.mfp)
             # t_SOI_primef = t_SOI + 0.81*(1 + 0.94*self.process.mfp/self.process.t_ox)*self.process.t_ox
@@ -140,7 +141,7 @@ class GCA:
             return bsf
 
         calc_methods = [bsf_calc1, bsf_calc2, bsf_calc3, bsf_calc4]
-        bsf = calc_methods[calc_method]()
+        bsf = calc_methods[calc_method - 1]()
 
         # Couette flow damping
         bcf = self.process.mu*self.spineA/self.process.t_ox
@@ -273,7 +274,7 @@ class GCA:
                                                        (self.fingerL_total**4)*self.fingerW))
         m_fing_2 = k_fing/w1**2
         # m_fing = k_fing/w1**2
-        print("Dimensions:", self.fingerL, self.k_support, V, x[0], x[1])
+        # print("Dimensions:", self.fingerL, self.k_support, V, x[0], x[1])
         v_fing = w1*x_fing
 
         # Spine axial spring compression
@@ -286,7 +287,7 @@ class GCA:
 
         # Support spring bending
         m_support = self.supportW*self.supportL*self.process.t_SOI*self.process.density
-        v_support = self.x_GCA*np.sqrt(self.Fkcon*self.k_support/m_support)/2.
+        v_support = self.x_GCA*np.sqrt(self.Fkcon*self.k_support/m_support)
 
         # print("k_spine", k_spine, "k_fing", k_fing)
 
@@ -301,6 +302,7 @@ class GCA:
         v0_6 = np.sqrt((self.Nfing*m_fing_2*v_fing**2 + m_spine*v_spine**2)/(self.Nfing*m_fing_2 + m_spine))
         v0_7 = np.sqrt((self.Nfing*m_fing*v_fing**2 + m_spine_v2*v_spine_v2**2)/(self.Nfing*m_fing + m_spine_v2))
         v0_8 = np.sqrt((self.Nfing*m_fing_2*v_fing**2 + m_spine_v2*v_spine_v2**2)/(self.Nfing*m_fing_2 + m_spine_v2))
+        v0_9 = np.sqrt((self.Nfing*m_fing*v_fing**2 + m_spine*v_spine**2 + 2*m_support*v_support**2)/(self.Nfing*m_fing + m_spine + 2*m_support))
 
         # print("xfing", x_fing_orig, x_fing, Fes, y)
         # print("masses: ", m_fing, k_fing/w1**2, m_spine, m_support)
@@ -309,6 +311,9 @@ class GCA:
         # print("Velocities with Momentum Conservation", v0, v0_orig, v0_2, v0_3, v0_4)
         # print("Velocities with Energy Conservation", v0_5, v0_6, v0_7, v0_8)
         # print('Release values (Fes, v_fing, v_spine, v0):', Fes, v_fing, v_spine, v0)
+        print("If mf0 omega kf mfeff F x_orig x varr vshut", I_fing, m_fing, w1, k_fing, m_fing_2, Fes, x_fing_orig, x_fing, v_fing, v_spine)
+        print("Release values (L, k, V, x0, v0_orig)", self.fingerL, self.k_support, V, self.x_GCA, v0_orig,
+              "------ v0s", v0, v0_2, v0_3, v0_4, v0_5, v0_6, v0_7, v0_8, v0_9)
         return np.array([self.x_GCA, -v0_orig])
 
     # Helper functions
@@ -328,7 +333,7 @@ class GCA:
         self.supportL = drawn_dimensions["supportL"]  # - overetch
         self.Nfing = drawn_dimensions["Nfing"]
         self.fingerW = drawn_dimensions["fingerW"] - 2*overetch
-        self.fingerL = drawn_dimensions["fingerL"] - overetch
+        self.fingerL = drawn_dimensions["fingerL"]  # - overetch
         self.fingerL_buffer = drawn_dimensions["fingerL_buffer"]
         self.spineW = drawn_dimensions["spineW"] - 2*overetch
         self.spineL = drawn_dimensions["spineL"] - 2*overetch
@@ -367,6 +372,8 @@ class GCA:
         self.spineA = self.mainspineA + self.Nfing*self.fingerL_total*self.fingerW + 2*self.gapstopW*self.gapstopL_half
         if hasattr(self, "armW"):  # GCA includes arm (attached to inchworm motor)
             self.spineA += self.armW*self.armL
+
+        print("spineW, spineL, num_etch_holes, mainspineA, spineA", self.spineW, self.spineL, self.num_etch_holes, self.mainspineA, self.spineA)
 
     def add_to_sim_log(self, names, values):
         for name, value in zip(names, values):

@@ -1,14 +1,13 @@
 from assembly import AssemblyGCA
+from process import *
 import numpy as np
-
-np.set_printoptions(precision=3, suppress=True)
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
 from scipy.io import loadmat, savemat
 from datetime import datetime
-from utils import *
 from sklearn.metrics import r2_score, mean_squared_error
 import time
+np.set_printoptions(precision=3, suppress=True)
 
 
 def setup_model_pullin():
@@ -60,8 +59,6 @@ def plot_data(fig, axs, pullin_V, pullin_avg, pullin_std, release_V, release_avg
     nx, ny = 3, 3
     for idx in range(nx):
         for idy in range(ny):
-            # i = nx*idy + idx
-            # ax = axs[idy, idx]
             i = ny*idx + idy
             # print(idx, idy, i)  # Confirms that I've ordered the data plots correctly
             ax = axs[idx, idy]
@@ -74,7 +71,8 @@ def plot_data(fig, axs, pullin_V, pullin_avg, pullin_std, release_V, release_avg
 
 if __name__ == "__main__":
     now = datetime.now()
-    name_clarifier = "_V_fingerL_pullin_normalFes_fixedKsupport"
+    overetch = SOI().overetch
+    name_clarifier = "_V_fingerL_pullin_release_overetch={}".format(overetch*1e6)
     timestamp = now.strftime("%Y%m%d_%H_%M_%S") + name_clarifier
     print(timestamp)
 
@@ -85,11 +83,10 @@ if __name__ == "__main__":
     data = loadmat("../data/20180208_fawn_gca_V_fingerL_pullin_release.mat")
     fingerL_values = np.ndarray.flatten(data["LARR"])*1e-6  # Length = 9
 
-    V_values = np.arange(20, 105, 5)
     # latexify(fig_width=6, columns=3)
-    fig, axs = setup_plot(3, 3, x_label="Voltage (V)", y_label="Pull-in Time (us)")
+    fig, axs = setup_plot(3, 3)
     axs[2, 1].set_xlabel("Voltage (V)")
-    axs[1, 0].set_ylabel("Time (us)")
+    axs[1, 0].set_ylabel(r"Time ($\mu$s)")
 
     pullin_V = []
     pullin_avg = []
@@ -98,10 +95,6 @@ if __name__ == "__main__":
     release_avg = []
     release_std = []
     labels = []
-    r2_scores_pullin = []
-    r2_scores_release = []
-    rmse_pullin = []
-    rmse_release = []
     for i in range(1, len(fingerL_values) + 1):
         pullin_V.append(np.ndarray.flatten(data["V{}_Arr1".format(i)]))
         pullin_avg.append(np.ndarray.flatten(data["tmeas{}_Arr1".format(i)]))
@@ -115,6 +108,16 @@ if __name__ == "__main__":
 
     nx, ny = 3, 3
     legend_pullin, legend_release = None, None
+
+    # Simulation metrics
+    pullin_V_results = []
+    pullin_t_results = []
+    release_V_results = []
+    release_t_results = []
+    r2_scores_pullin = []
+    r2_scores_release = []
+    rmse_pullin = []
+    rmse_release = []
 
     # Pullin measurements
     for idy in range(len(fingerL_values)):
@@ -131,13 +134,7 @@ if __name__ == "__main__":
         V_values = pullin_V[idy]
         # V_test = list(np.arange(min(V_values), max(V_values) + 1, 1.))
         for V in V_values:
-            # V_test.append(V - 0.1)
             V_test.append(V)
-            # V_test.append(V + 0.2)
-            # V_test.append(V + 0.5)
-            # V_test.append(V + 1)
-            # V_test.append(V + 1.5)
-            # V_test.append(V + 2)
         for V in V_test:
             start_time = time.process_time()
             u = setup_inputs(V=V, Fext=Fext)
@@ -154,6 +151,8 @@ if __name__ == "__main__":
         line, = axs[idy//ny, idy%ny].plot(V_converged, times_converged)
         if idy == ny - 1:
             legend_pullin = line
+        pullin_V_results.append(V_converged)
+        pullin_t_results.append(times_converged)
 
         # Calculate the r2 score
         actual = []
@@ -166,6 +165,8 @@ if __name__ == "__main__":
                 pred.append(times_converged[idx])
         r2 = r2_score(actual, pred)
         print("Pullin Pred:", pred, "Actual:", actual)
+        ratios = [p/a for p, a in zip(pred, actual)]
+        print("Pullin Ratios:", np.max(ratios), np.min(ratios), ratios)
         print("R2 score for L=", fingerL, "=", r2)
         r2_scores_pullin.append(r2)
         rmse = mean_squared_error(actual, pred, squared=False)
@@ -204,6 +205,8 @@ if __name__ == "__main__":
         line, = axs[idy//ny, idy%ny].plot(V_converged, times_converged, 'r')
         if idy == ny - 1:
             legend_release = line
+        release_V_results.append(V_converged)
+        release_t_results.append(times_converged)
 
         # Calculate the r2 score
         actual = []
@@ -216,6 +219,8 @@ if __name__ == "__main__":
                 pred.append(times_converged[idx])
         r2 = r2_score(actual, pred)
         print("Release Pred:", pred, "Actual:", actual)
+        ratios = [p/a for p, a in zip(pred, actual)]
+        print("Release Ratios:", np.max(ratios), np.min(ratios), ratios)
         print("R2 score for L=", fingerL, "=", r2)
         r2_scores_release.append(r2)
         rmse = mean_squared_error(actual, pred, squared=False)
@@ -229,9 +234,19 @@ if __name__ == "__main__":
     print("Release RMSE scores:", rmse_release, np.mean(rmse_release), np.std(rmse_release))
 
     # axs[0, ny-1].legend([legend_pullin, legend_release], ['Pull-in', 'Release'])
+    # fig.legend([legend_pullin], ['Pull-in'], loc='lower right', ncol=2)
+    # fig.legend([legend_release], ['Release'], loc='lower right', ncol=2)
     fig.legend([legend_pullin, legend_release], ['Pull-in', 'Release'], loc='lower right', ncol=2)
 
     plt.tight_layout()
     plt.savefig("../figures/" + timestamp + ".png")
     plt.savefig("../figures/" + timestamp + ".pdf")
+
+    np.save('../data/' + timestamp + '.npy', np.array([model.process, fingerL_values, pullin_V, pullin_avg, pullin_std,
+                                                       release_V, release_avg, release_std,
+                                                       pullin_V_results, pullin_t_results, release_V_results,
+                                                       release_t_results,
+                                                       r2_scores_pullin, r2_scores_release, rmse_pullin, rmse_release,
+                                                       fig], dtype=object),
+            allow_pickle=True)
     plt.show()

@@ -15,10 +15,10 @@ if __name__ == '__main__':
     print(timestamp)
 
     data = loadmat("../data/fingertip_deflection.mat")
-    dx_coventorware = np.ndarray.flatten(data["dx"])
-    F_coventorware = np.ndarray.flatten(data["F"])
-    dx_parallelplate_contreras = np.array([0.0331846184498904, 0.3212818489738992])
-    F_parallelplate_contreras = np.array([18.101327043662167, 174.954732673056])
+    dx_coventorware = np.ndarray.flatten(data["dx_coventorware"])
+    F_coventorware = np.ndarray.flatten(data["F_coventorware"])
+    dx_parallelplate_contreras = np.ndarray.flatten(data["dx_parallelplate_contreras"])  # np.array([0.0331846184498904, 0.3212818489738992])
+    F_parallelplate_contreras = np.ndarray.flatten(data["F_parallelplate_contreras"])  # np.array([18.101327043662167, 174.954732673056])
 
     model = AssemblyGCA(drawn_dimensions_filename="../layouts/coventorware_finger_bending_model.csv", process=SOI())
     I_fing = (model.gca.fingerW**3)*model.gca.process.t_SOI/12
@@ -29,7 +29,7 @@ if __name__ == '__main__':
     F_parallelplate = []
 
     V_all_parallelplate = np.arange(20, 115+1, 1)
-    V_all_fingerbending = np.arange(20, 90+1, 1)
+    V_all_fingerbending = np.arange(30, 90+1, 1)
     x = model.gca.x_GCA
     for V in V_all_parallelplate:
         Fes_parallelplate = model.gca.Fes_calc1(x, V)/model.gca.Nfing
