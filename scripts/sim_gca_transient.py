@@ -41,7 +41,7 @@ def sim_gca(model, u, t_span):
     terminate_simulation = lambda t, x: model.terminate_simulation(t, x)
     terminate_simulation.terminal = True
 
-    sol = solve_ivp(f, t_span, x0, events=[terminate_simulation], dense_output=True, max_step=0.5e-6,)
+    sol = solve_ivp(f, t_span, x0, events=[terminate_simulation], dense_output=True, max_step=0.5e-6, )
     return sol
 
 
@@ -72,11 +72,15 @@ def plot_solution(sol, t_sim, model, plt_title=None):
     Fes = np.abs(model.gca.sim_log['Fes'][:len(t)])
     Fb = np.abs(model.gca.sim_log['Fb'][:len(t)])
     Fk = np.abs(model.gca.sim_log['Fk'][:len(t)])
+    Ftot = np.abs([a + b + c for a, b, c in zip(model.gca.sim_log['Fes'][:len(t)],
+                                                model.gca.sim_log['Fb'][:len(t)],
+                                                model.gca.sim_log['Fk'][:len(t)])])
     eps = 1e-10
     if np.max(Fes) > eps:
-        ax2.plot(t*1e6, Fes+eps, 'b', label='|Fes|', marker='.')
-    ax2.plot(t*1e6, Fb+eps, 'orange', label='|Fb|', marker='.')
-    ax2.plot(t*1e6, Fk+eps, 'g', label='|Fk|', marker='.')
+        ax2.plot(t*1e6, Fes + eps, 'b', label='|Fes|', marker='.')
+    ax2.plot(t*1e6, Fb + eps, 'orange', label='|Fb|', marker='.')
+    ax2.plot(t*1e6, Fk + eps, 'g', label='|Fk|', marker='.')
+    ax2.plot(t*1e6, Ftot + eps, 'r', label='|Ftot|', marker='.')
     ax2.legend()
     ax2.set_xlabel('t (us)')
     ax2.set_ylabel('Force (N)')

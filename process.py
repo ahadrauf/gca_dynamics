@@ -1,6 +1,6 @@
 class SOI:
     def __init__(self):
-        self.overetch = 0.4e-6  # process overetch (m)
+        self.overetch = 0.5e-6  # process overetch (m)
         self.small_overetch = 0.4e-6  # process overetch (m) for small gaps (<small_overetch_threshold)
         self.small_overetch_threshold = 3.5e-6  # threshold for applying small_overetch
         self.t_SOI = 40e-6  # thickness of silicon (m)

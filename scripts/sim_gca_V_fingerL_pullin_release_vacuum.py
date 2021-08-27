@@ -10,21 +10,18 @@ import time
 np.set_printoptions(precision=3, suppress=True)
 
 
-def setup_model_pullin():
-    model = AssemblyGCA(drawn_dimensions_filename="../layouts/fawn.csv", process=SOIvacuum())
+def setup_model_pullin(process):
+    model = AssemblyGCA(drawn_dimensions_filename="../layouts/fawn.csv", process=process)
     # model.gca.x0 = model.gca.x0_pullin()
     model.gca.terminate_simulation = model.gca.pulled_in
     # model.gca.Fescon = 1.1
     return model
 
 
-def setup_model_release(**kwargs):
-    u = [kwargs["V"], kwargs["Fext"]]
-    model = AssemblyGCA(drawn_dimensions_filename="../layouts/fawn.csv", process=SOIvacuum())
-    # model.gca.k_support = 10.303975
-    # model.gca.x0 = model.gca.x0_release(u)
+def setup_model_release(V, Fext, process):
+    u = [V, Fext]
+    model = AssemblyGCA(drawn_dimensions_filename="../layouts/fawn.csv", process=process)
     model.gca.terminate_simulation = model.gca.released
-    # model.gca.Fescon = 1.1
     return model
 
 
@@ -77,7 +74,6 @@ if __name__ == "__main__":
     timestamp = now.strftime("%Y%m%d_%H_%M_%S") + name_clarifier
     print(timestamp)
 
-    model = setup_model_pullin()
     t_span = [0, 200e-6]
     Fext = 0
     nx, ny = 3, 3
@@ -124,21 +120,27 @@ if __name__ == "__main__":
     # Pullin measurements
     for idy in range(len(fingerL_values)):
         fingerL = fingerL_values[idy]
-        model.gca.fingerL = fingerL - model.gca.process.overetch
-        model.gca.update_dependent_variables()
-        model.gca.x0 = model.gca.x0_pullin()
-
         V_converged = []
         times_converged = []
 
-        # V_test = np.sort(np.append(V_values, [pullin_V[idy], pullin_V[idy]+0.2]))  # Add some extra values to test
-        # V_test = []
-        # V_values = pullin_V[idy]
-        V_test = np.arange(20, 91, 5)
-        # V_test = list(np.arange(min(V_values), max(V_values) + 1, 1.))
+        V_test = np.arange(20, 91, 1)
         for V in V_test:
             start_time = time.process_time()
-            u = setup_inputs(V=V, Fext=Fext)
+            # Pullin
+            # model = setup_model_pullin(process=SOIvacuum())
+            # model.gca.fingerL = fingerL - model.gca.process.overetch
+            # model.gca.update_dependent_variables()
+            # model.gca.x0 = model.gca.x0_pullin()
+            # u = setup_inputs(V=V, Fext=Fext)
+
+            # Release
+            model = setup_model_release(V=V, Fext=Fext, process=SOIvacuum())
+            model.gca.fingerL = fingerL - model.gca.process.overetch
+            model.gca.update_dependent_variables()
+            u = [V, Fext]
+            model.gca.x0 = model.gca.x0_release(u)
+            u = setup_inputs(V=0, Fext=Fext)  # Changed for release
+
             sol = sim_gca(model, u, t_span)
 
             if len(sol.t_events[0]) > 0:
@@ -177,20 +179,25 @@ if __name__ == "__main__":
         V_converged = []
         times_converged = []
 
-        # V_values = release_V[idy]
-        # V_test = V_values
-        V_test = np.arange(20, 91, 5)
-        # V_test = list(np.arange(min(V_values), max(V_values) + 1, 1.))
+        V_test = np.arange(20, 91, 1)
         for V in V_test:
             start_time = time.process_time()
-            model = setup_model_release(V=V, Fext=Fext)
+            # Pullin
+            # model = setup_model_pullin(process=SOI())
+            # model.gca.fingerL = fingerL - model.gca.process.overetch
+            # model.gca.update_dependent_variables()
+            # model.gca.x0 = model.gca.x0_pullin()
+            # u = setup_inputs(V=V, Fext=Fext)
+
+            # Release
+            model = setup_model_release(V=V, Fext=Fext, process=SOI())
             model.gca.fingerL = fingerL - model.gca.process.overetch
             model.gca.update_dependent_variables()
             u = [V, Fext]
             model.gca.x0 = model.gca.x0_release(u)
             u = setup_inputs(V=0, Fext=Fext)  # Changed for release
-            sol = sim_gca(model, u, t_span)
 
+            sol = sim_gca(model, u, t_span)
             if len(sol.t_events[0]) > 0:
                 V_converged.append(V)
                 times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
@@ -199,7 +206,6 @@ if __name__ == "__main__":
             print("Runtime for L=", fingerL, ", V=", V, "=", end_time - start_time)
         print(times_converged)
 
-        # axs[idy//ny, idy%ny].plot(V_converged, times_converged, 'r')
         line, = axs[idy//ny, idy%ny].plot(V_converged, times_converged, 'r')
         if idy == ny - 1:
             legend_release = line
@@ -228,7 +234,8 @@ if __name__ == "__main__":
     # print("Release RMSE scores:", rmse_release, np.mean(rmse_release), np.std(rmse_release))
 
     # axs[0, ny-1].legend([legend_pullin, legend_release], ['Pull-in', 'Release'])
-    fig.legend([legend_pullin, legend_release], ['Pull-in', 'Release'], loc='lower right', ncol=2)
+    # fig.legend([legend_pullin, legend_release], ['Pull-in in Vacuum', 'Pull-in in Air'], loc='lower right', ncol=2)
+    fig.legend([legend_pullin, legend_release], ['Release in Vacuum', 'Release in Air'], loc='lower right', ncol=2)
 
     plt.tight_layout()
     plt.savefig("../figures/" + timestamp + ".png")

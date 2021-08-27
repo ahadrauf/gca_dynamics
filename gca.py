@@ -198,7 +198,7 @@ class GCA:
         #                (xi >= a) * (gf * (c0 * np.exp(-l * xi) + c1 * np.exp(l * xi) + c2 *
         #                                        np.sin(l * xi) + c3 * np.cos(l * xi) - b[0]))
         y = lambda xi: (gf*(c0*np.exp(-l*xi) + c1*np.exp(l*xi) + c2*
-                            np.sin(l*xi) + c3*np.cos(l*xi) - b[0]))
+                            np.sin(l*xi) + c3*np.cos(l*xi) - b[0]))  # We only integrate over xi >= a
 
         dF_dx = lambda xi: self.Nfing*0.5*V**2*self.process.eps0*self.process.t_SOI* \
                            (1/(gf - y(xi/self.fingerL_total))**2 -
@@ -253,10 +253,10 @@ class GCA:
 
     def x0_release(self, u):
         """
-        Computes
+        Initial state for release simulations
 
-        :param u:
-        :return:
+        :param u: Input = [V, Fext]
+        :return: Initial state for release simulations
         """
         V, Fext = self.unzip_input(u)
         x = np.array([self.x_GCA, 0])
@@ -267,15 +267,13 @@ class GCA:
         # Finger release dynamics
         I_fing = (self.fingerW**3)*self.process.t_SOI/12
         k_fing = 8*self.process.E*I_fing/(self.fingerL_total**3)
-        m_fing = self.fingerW*self.fingerL*self.process.t_SOI*self.process.density
+        m_fing = self.fingerW*self.fingerL_total*self.process.t_SOI*self.process.density
         x_fing_orig = Fes/k_fing
         x_fing = y[-1]
-        w1 = (1.875**2)*np.sqrt(self.process.E*I_fing/(self.process.density*self.process.t_SOI*
-                                                       (self.fingerL_total**4)*self.fingerW))
-        m_fing_2 = k_fing/w1**2
-        # m_fing = k_fing/w1**2
-        # print("Dimensions:", self.fingerL, self.k_support, V, x[0], x[1])
-        v_fing = w1*x_fing
+        w1 = (1.875**2)*np.sqrt(self.process.E*I_fing/(m_fing*(self.fingerL_total**4)))
+        # m_fing_2 = k_fing/w1**2
+        m_fing_2 = Fes/x_fing/w1**2
+        v_fing = w1*x_fing/2
 
         # Spine axial spring compression
         k_spine = self.process.E*(self.process.t_SOI*self.spineW)/self.spineL
@@ -303,6 +301,7 @@ class GCA:
         v0_7 = np.sqrt((self.Nfing*m_fing*v_fing**2 + m_spine_v2*v_spine_v2**2)/(self.Nfing*m_fing + m_spine_v2))
         v0_8 = np.sqrt((self.Nfing*m_fing_2*v_fing**2 + m_spine_v2*v_spine_v2**2)/(self.Nfing*m_fing_2 + m_spine_v2))
         v0_9 = np.sqrt((self.Nfing*m_fing*v_fing**2 + m_spine*v_spine**2 + 2*m_support*v_support**2)/(self.Nfing*m_fing + m_spine + 2*m_support))
+        v0_10 = np.sqrt((self.Nfing*m_fing_2*v_fing**2 + m_spine*v_spine**2 + 2*m_support*v_support**2)/(self.Nfing*m_fing_2 + m_spine + 2*m_support))
 
         # print("xfing", x_fing_orig, x_fing, Fes, y)
         # print("masses: ", m_fing, k_fing/w1**2, m_spine, m_support)
@@ -311,10 +310,11 @@ class GCA:
         # print("Velocities with Momentum Conservation", v0, v0_orig, v0_2, v0_3, v0_4)
         # print("Velocities with Energy Conservation", v0_5, v0_6, v0_7, v0_8)
         # print('Release values (Fes, v_fing, v_spine, v0):', Fes, v_fing, v_spine, v0)
-        print("If mf0 omega kf mfeff F x_orig x varr vshut", I_fing, m_fing, w1, k_fing, m_fing_2, Fes, x_fing_orig, x_fing, v_fing, v_spine)
+        print("mf0 mfeff mshut mshutv2 Amainspine Ashut", m_fing, m_fing_2, m_spine, m_spine_v2, self.mainspineA, self.spineW*self.spineL)
+        print("If omega kf F x_orig x varr vshut", I_fing, w1, k_fing, Fes, x_fing_orig, x_fing, v_fing, v_spine)
         print("Release values (L, k, V, x0, v0_orig)", self.fingerL, self.k_support, V, self.x_GCA, v0_orig,
-              "------ v0s", v0, v0_2, v0_3, v0_4, v0_5, v0_6, v0_7, v0_8, v0_9)
-        return np.array([self.x_GCA, -v0_orig])
+              "------ v0s", v0, v0_2, v0_3, v0_4, v0_5, v0_6, v0_7, v0_8, v0_9, v0_10)
+        return np.array([self.x_GCA, -v0_6])
 
     # Helper functions
     def extract_real_dimensions_from_drawn_dimensions(self, drawn_dimensions_filename):
@@ -333,7 +333,7 @@ class GCA:
         self.supportL = drawn_dimensions["supportL"]  # - overetch
         self.Nfing = drawn_dimensions["Nfing"]
         self.fingerW = drawn_dimensions["fingerW"] - 2*overetch
-        self.fingerL = drawn_dimensions["fingerL"]  # - overetch
+        self.fingerL = drawn_dimensions["fingerL"] - overetch
         self.fingerL_buffer = drawn_dimensions["fingerL_buffer"]
         self.spineW = drawn_dimensions["spineW"] - 2*overetch
         self.spineL = drawn_dimensions["spineL"] - 2*overetch
@@ -394,5 +394,5 @@ class GCA:
 
 
 if __name__ == "__main__":
-    gca = GCA("layouts/fawn.csv")
+    gca = GCA("../layouts/fawn.csv")
     print(gca.process.overetch)
