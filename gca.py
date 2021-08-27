@@ -270,7 +270,7 @@ class GCA:
         m_fing = self.fingerW*self.fingerL_total*self.process.t_SOI*self.process.density
         x_fing_orig = Fes/k_fing
         x_fing = y[-1]
-        w1 = (1.875**2)*np.sqrt(self.process.E*I_fing/(m_fing*(self.fingerL_total**4)))
+        w1 = (1.875**2)*np.sqrt(self.process.E*I_fing/(m_fing*(self.fingerL_total**3)))
         # m_fing_2 = k_fing/w1**2
         m_fing_2 = Fes/x_fing/w1**2
         v_fing = w1*x_fing/2
@@ -285,7 +285,7 @@ class GCA:
 
         # Support spring bending
         m_support = self.supportW*self.supportL*self.process.t_SOI*self.process.density
-        v_support = self.x_GCA*np.sqrt(self.Fkcon*self.k_support/m_support)
+        v_support = self.x_GCA*np.sqrt(self.Fkcon*self.k_support/2/m_support)
 
         # print("k_spine", k_spine, "k_fing", k_fing)
 
@@ -311,10 +311,10 @@ class GCA:
         # print("Velocities with Energy Conservation", v0_5, v0_6, v0_7, v0_8)
         # print('Release values (Fes, v_fing, v_spine, v0):', Fes, v_fing, v_spine, v0)
         print("mf0 mfeff mshut mshutv2 Amainspine Ashut", m_fing, m_fing_2, m_spine, m_spine_v2, self.mainspineA, self.spineW*self.spineL)
-        print("If omega kf F x_orig x varr vshut", I_fing, w1, k_fing, Fes, x_fing_orig, x_fing, v_fing, v_spine)
+        print("If omega kf F x_orig x varr vshut vsupport", I_fing, w1, k_fing, Fes, x_fing_orig, x_fing, v_fing, v_spine, v_support)
         print("Release values (L, k, V, x0, v0_orig)", self.fingerL, self.k_support, V, self.x_GCA, v0_orig,
               "------ v0s", v0, v0_2, v0_3, v0_4, v0_5, v0_6, v0_7, v0_8, v0_9, v0_10)
-        return np.array([self.x_GCA, -v0_6])
+        return np.array([self.x_GCA, -v0])
 
     # Helper functions
     def extract_real_dimensions_from_drawn_dimensions(self, drawn_dimensions_filename):
