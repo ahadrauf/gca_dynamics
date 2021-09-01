@@ -1,8 +1,8 @@
 class SOI:
     def __init__(self):
-        self.overetch = 0.5e-6  # process overetch (m)
-        self.small_overetch = 0.4e-6  # process overetch (m) for small gaps (<small_overetch_threshold)
-        self.small_overetch_threshold = 3.5e-6  # threshold for applying small_overetch
+        self.undercut = 0.3e-6  # process undercut (m)
+        self.small_undercut = 0.2e-6  # process undercut (m) for small gaps (<small_undercut_threshold)
+        self.small_undercut_threshold = 3.5e-6  # threshold for applying small_undercut
         self.t_SOI = 40e-6  # thickness of silicon (m)
         self.t_ox = 2e-6  # thickness of oxide (m)
         self.t_gold = 500e-9  # depends on exact process (m)
@@ -18,9 +18,9 @@ class SOI:
 
 class SOIwater:
     def __init__(self):
-        self.overetch = 0.5e-6  # process overetch (m)
-        self.small_overetch = 0.19e-6  # process overetch (m) for small gaps (<4 um) (probably ignored for this work)
-        self.small_overetch_threshold = 3.5e-6  # threshold for applying small_overetch
+        self.undercut = 0.5e-6  # process undercut (m)
+        self.small_undercut = 0.19e-6  # process undercut (m) for small gaps (<4 um) (probably ignored for this work)
+        self.small_undercut_threshold = 3.5e-6  # threshold for applying small_undercut
         self.t_SOI = 40e-6  # thickness of silicon (m)
         self.t_ox = 2e-6  # thickness of oxide (m)
         self.t_gold = 500e-9  # depends on exact process (m)
@@ -37,9 +37,9 @@ class SOIwater:
 
 class SOIvacuum:
     def __init__(self):
-        self.overetch = 0.48e-6  # process overetch (m)
-        self.small_overetch = 0.19e-6  # process overetch (m) for small gaps (<4 um)
-        self.small_overetch_threshold = 3.5e-6  # threshold for applying small_overetch
+        self.undercut = 0.48e-6  # process undercut (m)
+        self.small_undercut = 0.19e-6  # process undercut (m) for small gaps (<4 um)
+        self.small_undercut_threshold = 3.5e-6  # threshold for applying small_undercut
         self.t_SOI = 40e-6  # thickness of silicon (m)
         self.t_ox = 2e-6  # thickness of oxide (m)
         self.t_gold = 500e-9  # depends on exact process (m)

@@ -38,7 +38,7 @@ def sim_gca(model, u, t_span, verbose=False):
     terminate_simulation.terminal = True
 
     sol = solve_ivp(f, t_span, x0, events=[terminate_simulation], dense_output=True,
-                    max_step=0.25e-6)  # , method="LSODA")
+                    max_step=0.1e-6)  # , method="LSODA")
     return sol
 
 
@@ -123,19 +123,19 @@ if __name__ == "__main__":
         V_converged = []
         times_converged = []
 
-        V_test = np.arange(20, 91, 1)
+        V_test = np.arange(20, 91, 5)
         for V in V_test:
             start_time = time.process_time()
             # Pullin
             # model = setup_model_pullin(process=SOIvacuum())
-            # model.gca.fingerL = fingerL - model.gca.process.overetch
+            # model.gca.fingerL = fingerL - model.gca.process.undercut
             # model.gca.update_dependent_variables()
             # model.gca.x0 = model.gca.x0_pullin()
             # u = setup_inputs(V=V, Fext=Fext)
 
             # Release
             model = setup_model_release(V=V, Fext=Fext, process=SOIvacuum())
-            model.gca.fingerL = fingerL - model.gca.process.overetch
+            model.gca.fingerL = fingerL - model.gca.process.undercut
             model.gca.update_dependent_variables()
             u = [V, Fext]
             model.gca.x0 = model.gca.x0_release(u)
@@ -179,19 +179,19 @@ if __name__ == "__main__":
         V_converged = []
         times_converged = []
 
-        V_test = np.arange(20, 91, 1)
+        V_test = np.arange(20, 91, 5)
         for V in V_test:
             start_time = time.process_time()
             # Pullin
             # model = setup_model_pullin(process=SOI())
-            # model.gca.fingerL = fingerL - model.gca.process.overetch
+            # model.gca.fingerL = fingerL - model.gca.process.undercut
             # model.gca.update_dependent_variables()
             # model.gca.x0 = model.gca.x0_pullin()
             # u = setup_inputs(V=V, Fext=Fext)
 
             # Release
             model = setup_model_release(V=V, Fext=Fext, process=SOI())
-            model.gca.fingerL = fingerL - model.gca.process.overetch
+            model.gca.fingerL = fingerL - model.gca.process.undercut
             model.gca.update_dependent_variables()
             u = [V, Fext]
             model.gca.x0 = model.gca.x0_release(u)

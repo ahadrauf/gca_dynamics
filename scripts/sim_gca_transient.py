@@ -15,6 +15,8 @@ def setup_model_pullin():
 def setup_model_release(**kwargs):
     u = [kwargs["V"], kwargs["Fext"]]
     model = AssemblyGCA(drawn_dimensions_filename="../layouts/fawn.csv", process=SOI())
+    model.gca.fingerL = 15.6e-6
+    model.gca.update_dependent_variables()
     if "Fescon" in kwargs:
         model.gca.Fescon = kwargs["Fescon"]
     if "Fkcon" in kwargs:

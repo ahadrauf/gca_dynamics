@@ -29,7 +29,7 @@ if __name__ == '__main__':
     F_parallelplate = []
 
     V_all_parallelplate = np.arange(20, 115+1, 1)
-    V_all_fingerbending = np.arange(30, 90+1, 1)
+    V_all_fingerbending = np.arange(30, 90+1, 0.25)
     x = model.gca.x_GCA
     for V in V_all_parallelplate:
         Fes_parallelplate = model.gca.Fes_calc1(x, V)/model.gca.Nfing
@@ -44,10 +44,22 @@ if __name__ == '__main__':
     # print(np.max(difference), difference)
     print("Model difference", F_parallelplate[-1]/F_fingerbending[-1])
 
+    # print("Parallel plate DC | Parallel Plate | CoventorWare | Finger Bending")
     print("Parallel plate DC:", dx_parallelplate_contreras, F_parallelplate_contreras)
     print("Parallel Plate:", dx_parallelplate, F_parallelplate)
     print("CoventorWare:", dx_coventorware, F_coventorware)
     print("Finger Bending:", dx_fingerbending, F_fingerbending)
+
+    # Calculate rough R2 score
+    actual_F = F_coventorware
+    pred_F = []
+    for actual_dx in dx_coventorware:
+        idx = np.argmin(np.abs(np.array(dx_fingerbending) - actual_dx))
+        pred_F.append(F_fingerbending[idx])
+    print("Actual F", actual_F)
+    print("Pred F", pred_F)
+    r2 = r2_score(actual_F, pred_F)
+    print("R2 score:", r2)
 
     plt.plot(dx_parallelplate_contreras, F_parallelplate_contreras, 'b-')
     # plt.plot(dx_parallelplate, F_parallelplate, 'b-')

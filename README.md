@@ -51,6 +51,12 @@ def sim_gca(model, u, t_span, verbose=False):
     return sol
 ```
 
+Note that the `max_step` parameter in `solve_ivp()` is actually quite important - generally,
+in Python's implementation of `solve_ivp()`, for small time scales like what we're working with
+the final time recorded by the `terminate_simulation` condition will be some multiple of `max_step`.
+Thus, for production code it's generally good to have low values for `max_step` (e.g. 0.1e-6), but for 
+general speed and quick prototyping it's sufficient to have larger values (e.g. 0.25e-6, 0.5e-6).
+
 ## FAQ's
 * I get the error ```gca.py:149: RuntimeWarning: invalid value encountered in sqrt``` or ```gca.py:177: IntegrationWarning: The occurrence of roundoff error is detected, which prevents 
   the requested tolerance from being achieved.  The error may be 

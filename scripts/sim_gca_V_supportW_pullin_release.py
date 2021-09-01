@@ -119,11 +119,11 @@ if __name__ == "__main__":
     # Pullin measurements
     # for idy in range(len(supportW_values)):
     #     supportW = supportW_values[idy]
-    #     model.gca.supportW = supportW - 2*model.gca.process.overetch
+    #     model.gca.supportW = supportW - 2*model.gca.process.undercut
     #     # if supportW < 3.5e-6:
-    #     #     model.gca.supportW = supportW - 2*model.gca.process.small_overetch
+    #     #     model.gca.supportW = supportW - 2*model.gca.process.small_undercut
     #     # else:
-    #     #     model.gca.supportW = supportW - 2*model.gca.process.overetch
+    #     #     model.gca.supportW = supportW - 2*model.gca.process.undercut
     #     model.gca.update_dependent_variables()
     #
     #     V_converged = []
@@ -184,11 +184,11 @@ if __name__ == "__main__":
         for V in V_test:
             start_time = time.process_time()
             model = setup_model_release(V=V, Fext=Fext)
-            model.gca.supportW = supportW - 2*model.gca.process.overetch
+            model.gca.supportW = supportW - 2*model.gca.process.undercut
             # if supportW < 3.5e-6:
-            #     model.gca.supportW = supportW - 2*model.gca.process.small_overetch
+            #     model.gca.supportW = supportW - 2*model.gca.process.small_undercut
             # else:
-            #     model.gca.supportW = supportW - 2*model.gca.process.overetch
+            #     model.gca.supportW = supportW - 2*model.gca.process.undercut
             model.gca.update_dependent_variables()
             u = [V, Fext]
             model.gca.x0 = model.gca.x0_release(u)

@@ -60,7 +60,7 @@ def plot_data(fig, axs, pullin_V, pullin_avg, pullin_std, release_V, release_avg
             # print(idx, idy, i)  # Confirms that I've ordered the data plots correctly
             ax = axs[idx, idy]
             # ax.grid(True)
-            # ax.errorbar(pullin_V[i], pullin_avg[i], pullin_std[i], fmt='b.', capsize=3)
+            ax.errorbar(pullin_V[i], pullin_avg[i], pullin_std[i], fmt='b.', capsize=3)
             ax.errorbar(release_V[i], release_avg[i], release_std[i], fmt='r.', capsize=3)
             ax.annotate(labels[i], xy=(1, 1), xycoords='axes fraction', fontsize=10,
                         xytext=(-2, -2), textcoords='offset points',
@@ -69,9 +69,9 @@ def plot_data(fig, axs, pullin_V, pullin_avg, pullin_std, release_V, release_avg
 
 if __name__ == "__main__":
     now = datetime.now()
-    overetch = SOI().overetch
+    undercut = SOI().undercut
     Fes_calc_method, Fb_calc_method = 2, 2
-    name_clarifier = "_V_fingerL_pullin_release_overetch={:.3f}_Fes=v{}_Fb=v{}".format(overetch*1e6, Fes_calc_method, Fb_calc_method)
+    name_clarifier = "_V_fingerL_pullin_release_undercut={:.3f}_Fes=v{}_Fb=v{}".format(undercut*1e6, Fes_calc_method, Fb_calc_method)
     timestamp = now.strftime("%Y%m%d_%H_%M_%S") + name_clarifier
     print(timestamp)
 
@@ -119,58 +119,58 @@ if __name__ == "__main__":
     rmse_release = []
 
     # Pullin measurements
-    # for idy in range(len(fingerL_values)):
-    #     fingerL = fingerL_values[idy]
-    #     model.gca.fingerL = fingerL - model.gca.process.overetch
-    #     model.gca.update_dependent_variables()
-    #     model.gca.x0 = model.gca.x0_pullin()
-    #
-    #     V_converged = []
-    #     times_converged = []
-    #
-    #     # V_test = np.sort(np.append(V_values, [pullin_V[idy], pullin_V[idy]+0.2]))  # Add some extra values to test
-    #     V_test = []
-    #     V_values = pullin_V[idy]
-    #     # V_test = list(np.arange(min(V_values), max(V_values) + 1, 1.))
-    #     for V in V_values:
-    #         V_test.append(V)
-    #     for V in V_test:
-    #         start_time = time.process_time()
-    #         u = setup_inputs(V=V, Fext=Fext)
-    #         sol = sim_gca(model, u, t_span, Fes_calc_method=Fes_calc_method, Fb_calc_method=Fb_calc_method)
-    #
-    #         if len(sol.t_events[0]) > 0:
-    #             V_converged.append(V)
-    #             times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
-    #
-    #         end_time = time.process_time()
-    #         print("Runtime for L=", fingerL, ", V=", V, "=", end_time - start_time)
-    #     print(fingerL, V_converged, times_converged)
-    #
-    #     line, = axs[idy//ny, idy%ny].plot(V_converged, times_converged)
-    #     if idy == ny - 1:
-    #         legend_pullin = line
-    #     pullin_V_results.append(V_converged)
-    #     pullin_t_results.append(times_converged)
-    #
-    #     # Calculate the r2 score
-    #     actual = []
-    #     pred = []
-    #     for V in V_converged:
-    #         if V in pullin_V[idy]:
-    #             idx = np.where(pullin_V[idy] == V)[0][0]
-    #             actual.append(pullin_avg[idy][idx])
-    #             idx = np.where(V_converged == V)[0][0]
-    #             pred.append(times_converged[idx])
-    #     r2 = r2_score(actual, pred)
-    #     print("Pullin Pred:", pred, "Actual:", actual)
-    #     ratios = [p/a for p, a in zip(pred, actual)]
-    #     print("Pullin Ratios:", np.max(ratios), np.min(ratios), ratios)
-    #     print("R2 score for L=", fingerL, "=", r2)
-    #     r2_scores_pullin.append(r2)
-    #     rmse = mean_squared_error(actual, pred, squared=False)
-    #     rmse_pullin.append(rmse)
-    #     print("RMSE score for L=", fingerL, "=", rmse)
+    for idy in range(len(fingerL_values)):
+        fingerL = fingerL_values[idy]
+        model.gca.fingerL = fingerL - model.gca.process.undercut
+        model.gca.update_dependent_variables()
+        model.gca.x0 = model.gca.x0_pullin()
+
+        V_converged = []
+        times_converged = []
+
+        # V_test = np.sort(np.append(V_values, [pullin_V[idy], pullin_V[idy]+0.2]))  # Add some extra values to test
+        V_test = []
+        V_values = pullin_V[idy]
+        # V_test = list(np.arange(min(V_values), max(V_values) + 1, 1.))
+        for V in V_values:
+            V_test.append(V)
+        for V in V_test:
+            start_time = time.process_time()
+            u = setup_inputs(V=V, Fext=Fext)
+            sol = sim_gca(model, u, t_span, Fes_calc_method=Fes_calc_method, Fb_calc_method=Fb_calc_method)
+
+            if len(sol.t_events[0]) > 0:
+                V_converged.append(V)
+                times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
+
+            end_time = time.process_time()
+            print("Runtime for L=", fingerL, ", V=", V, "=", end_time - start_time)
+        print(fingerL, V_converged, times_converged)
+
+        line, = axs[idy//ny, idy%ny].plot(V_converged, times_converged)
+        if idy == ny - 1:
+            legend_pullin = line
+        pullin_V_results.append(V_converged)
+        pullin_t_results.append(times_converged)
+
+        # Calculate the r2 score
+        actual = []
+        pred = []
+        for V in V_converged:
+            if V in pullin_V[idy]:
+                idx = np.where(pullin_V[idy] == V)[0][0]
+                actual.append(pullin_avg[idy][idx])
+                idx = np.where(V_converged == V)[0][0]
+                pred.append(times_converged[idx])
+        r2 = r2_score(actual, pred)
+        print("Pullin Pred:", pred, "Actual:", actual)
+        ratios = [p/a for p, a in zip(pred, actual)]
+        print("Pullin Ratios:", np.max(ratios), np.min(ratios), ratios)
+        print("R2 score for L=", fingerL, "=", r2)
+        r2_scores_pullin.append(r2)
+        rmse = mean_squared_error(actual, pred, squared=False)
+        rmse_pullin.append(rmse)
+        print("RMSE score for L=", fingerL, "=", rmse)
 
     # Release measurements
     for idy in range(len(fingerL_values)):
@@ -186,7 +186,7 @@ if __name__ == "__main__":
             start_time = time.process_time()
             model = setup_model_release(V=V, Fext=Fext)
             # model.gca.Fescon = 1.1
-            model.gca.fingerL = fingerL - model.gca.process.overetch
+            model.gca.fingerL = fingerL - model.gca.process.undercut
             model.gca.update_dependent_variables()
             u = [V, Fext]
             model.gca.x0 = model.gca.x0_release(u)
@@ -227,15 +227,15 @@ if __name__ == "__main__":
         print("RMSE score for L=", fingerL, "=", rmse)
 
     print("Finger L values:", [L*1e6 for L in fingerL_values])
-    # print("Pullin R2 scores:", r2_scores_pullin, np.mean(r2_scores_pullin), np.std(r2_scores_pullin))
+    print("Pullin R2 scores:", r2_scores_pullin, np.mean(r2_scores_pullin), np.std(r2_scores_pullin))
     print("Release R2 scores:", r2_scores_release, np.mean(r2_scores_release), np.std(r2_scores_release))
-    # print("Pullin RMSE scores:", rmse_pullin, np.mean(rmse_pullin), np.std(rmse_pullin))
+    print("Pullin RMSE scores:", rmse_pullin, np.mean(rmse_pullin), np.std(rmse_pullin))
     print("Release RMSE scores:", rmse_release, np.mean(rmse_release), np.std(rmse_release))
 
     # axs[0, ny-1].legend([legend_pullin, legend_release], ['Pull-in', 'Release'])
     # fig.legend([legend_pullin], ['Pull-in'], loc='lower right', ncol=2)
-    fig.legend([legend_release], ['Release'], loc='lower right', ncol=2)
-    # fig.legend([legend_pullin, legend_release], ['Pull-in', 'Release'], loc='lower right', ncol=2)
+    # fig.legend([legend_release], ['Release'], loc='lower right', ncol=2)
+    fig.legend([legend_pullin, legend_release], ['Pull-in', 'Release'], loc='lower right', ncol=2)
 
     plt.tight_layout()
     plt.savefig("../figures/" + timestamp + ".png")
