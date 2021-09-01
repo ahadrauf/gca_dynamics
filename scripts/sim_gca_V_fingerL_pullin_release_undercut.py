@@ -186,8 +186,8 @@ if __name__ == "__main__":
             times_converged = []
 
             V_values = release_V[idy]
-            # V_test = V_values
-            V_test = list(np.arange(min(V_values), max(V_values) + 1, 1.))
+            V_test = V_values
+            # V_test = list(np.arange(min(V_values), max(V_values) + 1, 1.))
             for V in V_test:
                 start_time = time.process_time()
                 model = setup_model_release(V=V, Fext=Fext, process=process)
@@ -261,6 +261,9 @@ if __name__ == "__main__":
 
     print("Finger L values:", [L*1e6 for L in fingerL_values])
     print("Pullin V results", pullin_V_results)
+    print("Pullin t results", pullin_t_results)
+    print("Release V results", release_V_results)
+    print("Release t results", release_t_results)
     print("Pullin R2 scores:", r2_scores_pullin)  #, np.mean(r2_scores_pullin), np.std(r2_scores_pullin))
     print("Release R2 scores:", r2_scores_release)  # , np.mean(r2_scores_release), np.std(r2_scores_release))
     print("Pullin R2 scores aggregate:", r2_scores_pullin_agg, np.nanmean(r2_scores_pullin_agg), np.nanstd(r2_scores_pullin_agg))
