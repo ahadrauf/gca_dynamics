@@ -67,8 +67,9 @@ if __name__ == "__main__":
     now = datetime.now()
     undercut = SOI().undercut
     Fes_calc_method, Fb_calc_method = 2, 2
-    name_clarifier = "_V_supportW_pullin_release_undercut={:.3f}_Fes=v{}_Fb=v{}".format(undercut*1e6, Fes_calc_method,
-                                                                                        Fb_calc_method)
+    # name_clarifier = "_V_supportW_pullin_release_undercut={:.3f}_Fes=v{}_Fb=v{}".format(undercut*1e6, Fes_calc_method,
+    #                                                                                     Fb_calc_method)
+    name_clarifier = "_V_supportW_pullin_release_undercut=custom_r2_min_Fes=v{}_Fb=v{}".format(undercut*1e6, Fes_calc_method, Fb_calc_method)
     timestamp = now.strftime("%Y%m%d_%H_%M_%S") + name_clarifier
     print(timestamp)
 
@@ -116,8 +117,9 @@ if __name__ == "__main__":
 
     # Pullin measurements
     # process = SOI()
-    undercut = [2.2e-07, 4.000000000000002e-07, 3.900000000000002e-07, 3.200000000000001e-07, 3.900000000000002e-07,
-                3.000000000000001e-07, 3.100000000000001e-07, 3.8000000000000017e-07]
+    undercut = [2.2e-07, 4.000000000000002e-07, 3.900000000000002e-07, 3.8000000000000017e-07, 4.5000000000000024e-07, 3.000000000000001e-07, 2e-07, 3.8000000000000017e-07]  # R2 min
+    # undercut = [2.2e-07, 4.000000000000002e-07, 3.8000000000000017e-07, 3.7000000000000016e-07, 3.7000000000000016e-07, 2.7000000000000006e-07, 3.300000000000001e-07, 2e-07]  # R2 avg (worse)
+    # undercut = [4.300000000000002e-07, 5.000000000000003e-07, 5.000000000000003e-07, 5.000000000000003e-07, 5.000000000000003e-07, 5.000000000000003e-07, 2e-07, 5.000000000000003e-07]  # R2 pullin
     for idy in range(len(supportW_values)):
         uc = undercut[idy]
         process = SOI()
@@ -152,7 +154,7 @@ if __name__ == "__main__":
         print(supportW, V_converged, times_converged)
 
         # axs[idy//ny, idy%ny].plot(V_converged, times_converged)
-        line, = axs[idy//ny, idy%ny].plot(V_converged, times_converged)
+        line, = axs[idy//ny, idy%ny].plot(V_converged, times_converged, 'b')
         if idy == ny - 1:
             legend_pullin = line
         pullin_V_results.append(V_converged)
@@ -175,6 +177,7 @@ if __name__ == "__main__":
         rmse_pullin.append(rmse)
         print("RMSE score for supportW=", supportW, "=", rmse)
 
+    # undercut = [2e-07, 4.000000000000002e-07, 3.7000000000000016e-07, 3.5000000000000014e-07, 3.7000000000000016e-07, 2.5000000000000004e-07, 3.300000000000001e-07, 2.4000000000000003e-07]  # R2 release
     # Release measurements
     for idy in range(len(supportW_values)):
         uc = undercut[idy]

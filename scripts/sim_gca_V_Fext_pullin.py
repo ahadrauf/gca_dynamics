@@ -10,7 +10,6 @@ from utils import *
 def setup_model_pullin():
     model = AssemblyGCA("../layouts/gamma.csv")
     model.gca.x0 = model.gca.x0_pullin()
-    # model.gca.x0[0] -= 2e-6 + 2*model.gca.process.overetch
     model.gca.terminate_simulation = model.gca.pulled_in
     return model
 
@@ -48,12 +47,12 @@ def plot_data(fig, ax, Vs, ts, labels, colors, markers):
 
 if __name__ == "__main__":
     now = datetime.now()
-    name_clarifier = "_V_Fext_pullin_bsfcalc3"
+    name_clarifier = "_V_Fext_pullin"
     timestamp = now.strftime("%Y%m%d_%H_%M_%S") + name_clarifier
     print(timestamp)
 
     model = setup_model_pullin()
-    t_span = [0, 150e-6]
+    t_span = [0, 200e-6]
     colors = ['k', 'r', 'b']
     markers = ['x', 'o', '^']
     support_spring_widths = [0e-6, 5e-6, 6.04e-6]
@@ -83,17 +82,9 @@ if __name__ == "__main__":
         V_converged = []
         times_converged = []
 
-        V_test = []
-        # V_values = np.arange(min(Vs[idy]), max(Vs[idy]))
         V_values = Vs[idy]
-        for V in V_values:
-            # V_test.append(V - 1.5)
-            # V_test.append(V - 1)
-            V_test.append(V)
-            V_test.append(V + 0.5)
-            V_test.append(V + 1)
-            V_test.append(V + 1.5)
-        print(V_values)
+        V_test = V_values
+        # V_test = np.arange(min(V_values), max(V_values))
 
         if idy != 0:
             model.gca.add_support_spring(springW=support_spring_widths[idy], springL=594.995e-6, nBeams=16,
@@ -103,7 +94,7 @@ if __name__ == "__main__":
 
         # (adds a lot of compute time, since failed simulations take time)
         for V in V_test:
-            u = setup_inputs(V=V, Fext=0.)
+            u = setup_inputs(V=V, Fext=Fext)
             sol = sim_gca(model, u, t_span)
 
             if len(sol.t_events[0]) > 0:

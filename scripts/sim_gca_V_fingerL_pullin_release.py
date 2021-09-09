@@ -72,7 +72,7 @@ if __name__ == "__main__":
     undercut = SOI().undercut
     Fes_calc_method, Fb_calc_method = 2, 2
     # name_clarifier = "_V_fingerL_pullin_release_undercut={:.3f}_Fes=v{}_Fb=v{}".format(undercut*1e6, Fes_calc_method, Fb_calc_method)
-    name_clarifier = "_V_fingerL_pullin_release_undercut=custom_Fes=v{}_Fb=v{}".format(Fes_calc_method, Fb_calc_method)
+    name_clarifier = "_V_fingerL_pullin_release_undercut=padded_uc_min_Fes=v{}_Fb=v{}".format(Fes_calc_method, Fb_calc_method)
     timestamp = now.strftime("%Y%m%d_%H_%M_%S") + name_clarifier
     print(timestamp)
 
@@ -120,7 +120,9 @@ if __name__ == "__main__":
 
     # Pullin measurements
     # process = SOI()
-    undercut = [4.5e-07, 4.0e-07, 3.4e-07, 3.0e-07, 2.9e-07, 2.8e-07, 2.4e-07, 2.8e-07, 2.6e-07]  # based on UC min/UC avg
+    # undercut = [4.5e-07, 4.0e-07, 3.4e-07, 3.0e-07, 2.9e-07, 2.8e-07, 2.4e-07, 2.8e-07, 2.6e-07]  # based on UC min/UC avg
+    # undercut = [4.5000000000000024e-07, 4.000000000000002e-07, 3.4000000000000013e-07, 3.000000000000001e-07, 2.900000000000001e-07, 2.8000000000000007e-07, 2.4000000000000003e-07, 2.8000000000000007e-07, 3.000000000000001e-07]  # based on padded UC average
+    undercut = [4.5000000000000024e-07, 4.000000000000002e-07, 3.4000000000000013e-07, 3.300000000000001e-07, 2.900000000000001e-07, 2.8000000000000007e-07, 2.900000000000001e-07, 3.300000000000001e-07, 3.100000000000001e-07]  # based on padded UC min
     # undercut = [5.000000000000003e-07, 4.200000000000002e-07, 4.000000000000002e-07, 3.200000000000001e-07, 2.5000000000000004e-07, 3.100000000000001e-07, 2.8000000000000007e-07, 3.000000000000001e-07, 2.6000000000000005e-07]  # based on RMSE max
     for idy in range(len(fingerL_values)):
         uc = undercut[idy]
@@ -138,8 +140,8 @@ if __name__ == "__main__":
         # V_test = np.sort(np.append(V_values, [pullin_V[idy], pullin_V[idy]+0.2]))  # Add some extra values to test
         V_values = pullin_V[idy]
         # V_test = V_values
-        V_test = list(np.arange(min(V_values), max(V_values) + 1, 1.))
-        V_test = V_test[:5]
+        V_test = list(np.arange(min(V_values), max(V_values) + 1, 0.1))
+        V_test = V_test[:20]
         for V in V_test:
             start_time = time.process_time()
             u = setup_inputs(V=V, Fext=Fext)
@@ -191,7 +193,8 @@ if __name__ == "__main__":
 
         V_values = release_V[idy]
         # V_test = V_values
-        V_test = list(np.arange(min(V_values), max(V_values) + 1, 1.))
+        V_test = list(np.arange(min(V_values), max(V_values) + 1, 0.1))
+        V_test = V_test[:20]
         for V in V_test:
             start_time = time.process_time()
             model = setup_model_release(V=V, Fext=Fext, process=process)

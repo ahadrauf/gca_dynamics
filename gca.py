@@ -86,8 +86,6 @@ class GCA:
         S2 = min(fingerL, t_SOI)
         beta = lambda eta: 1 - (1 - 0.42)*eta
 
-        # beta = lambda eta: 1 - 0.6*eta
-
         def bsf_calc1():
             bsff = self.process.mu*self.Nfing*S1*(S2**3)*beta(S2/S1)*(1/gf**3)
             bsfb = self.process.mu*self.Nfing*S1*(S2**3)*beta(S2/S1)*(1/gb**3)
@@ -97,8 +95,8 @@ class GCA:
         def bsf_calc2():
             t_SOI_primef = t_SOI
             t_SOI_primeb = t_SOI
-            bsff = self.process.mu*self.Nfing*S1*(S2**3)*beta(S2/S1)*(1/gf**3)
-            bsfb = self.process.mu*self.Nfing*S1*(S2**3)*beta(S2/S1)*(1/gb**3)
+            bsff = self.process.mu*self.Nfing*S1*(S2**3)*beta(S2/S1)/(gf**3)
+            bsfb = self.process.mu*self.Nfing*S1*(S2**3)*beta(S2/S1)/(gb**3)
             bsf_adjf = (4*(gf**3)*fingerW + 2*(self.process.t_ox**3)*t_SOI_primef)/(
                     (gf**3)*fingerW + 2*(self.process.t_ox**3)*t_SOI_primef)
             bsf_adjb = (4*(gb**3)*fingerW + 2*(self.process.t_ox**3)*t_SOI_primeb)/(
@@ -274,7 +272,7 @@ class GCA:
         Initial state for pullin simulations, i.e. the GCA begins at position x[0] = 0 and velocity x[1] = 0
         :return: Initial state for pullin simulations
         """
-        return np.array([0, 0])
+        return np.array([0., 0.])
 
     def x0_release(self, u):
         """
@@ -360,7 +358,8 @@ class GCA:
         drawn_dimensions = {}
         with open(drawn_dimensions_filename, 'r') as data:
             next(data)  # skip header row
-            for name, value in csv.reader(data):
+            for line in csv.reader(data):
+                name, value = line[:2]
                 drawn_dimensions[name] = float(value)
 
         self.gf = drawn_dimensions["gf"] + 2*undercut

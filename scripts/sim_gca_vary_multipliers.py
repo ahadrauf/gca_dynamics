@@ -72,7 +72,9 @@ def display_stats(x_converged, times_converged, label):
 
 if __name__ == "__main__":
     now = datetime.now()
-    name_clarifier = "_vary_multipliers"
+    undercut = SOI().undercut
+    Fes_calc_method, Fb_calc_method = 2, 2
+    name_clarifier = "_vary_multipliers_undercut={:.3f}_Fes=v{}_Fb=v{}".format(undercut*1e6, Fes_calc_method, Fb_calc_method)
     timestamp = now.strftime("%Y%m%d_%H_%M_%S") + name_clarifier
     print(timestamp)
 

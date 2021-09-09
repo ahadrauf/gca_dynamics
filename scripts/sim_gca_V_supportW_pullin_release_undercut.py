@@ -105,7 +105,8 @@ if __name__ == "__main__":
     legend_pullin, legend_release = None, None
 
     # Simulation metrics
-    undercut_range = np.arange(0.2e-6, 0.501e-6, 0.01e-6)
+    # undercut_range = np.arange(0.2e-6, 0.501e-6, 0.01e-6)
+    undercut_range = np.arange(0.0e-6, 0.201e-6, 0.01e-6)
     # undercut_range = np.arange(0.2e-6, 0.501e-6, 0.3e-6)
     best_undercut_pullin = []
     best_undercut_release = []
@@ -155,6 +156,9 @@ if __name__ == "__main__":
                 if len(sol.t_events[0]) > 0:
                     V_converged.append(V)
                     times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
+                else:
+                    V_converged.append(V)
+                    times_converged.append(t_span[-1]*1e6)
 
                 end_time = time.process_time()
                 print("Runtime pullin for w =", supportW, ", V =", V, ", undercut =", undercut, "=", end_time - start_time, '-->', {v: t for v, t in zip(V_converged, times_converged)})
@@ -208,6 +212,9 @@ if __name__ == "__main__":
                 if len(sol.t_events[0]) > 0:
                     V_converged.append(V)
                     times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
+                else:
+                    V_converged.append(V)
+                    times_converged.append(t_span[-1]*1e6)
 
                 end_time = time.process_time()
                 print("Runtime release for w =", supportW, ", V =", V, ", undercut =", undercut, "=", end_time - start_time, '-->', {v: t for v, t in zip(V_converged, times_converged)})

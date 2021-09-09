@@ -1,6 +1,6 @@
 class SOI:
     def __init__(self):
-        self.undercut = 0.4e-6  # process undercut (m)
+        self.undercut = 0.5e-6  # process undercut (m)
         self.small_undercut = 0.2e-6  # process undercut (m) for small gaps (<small_undercut_threshold)
         self.small_undercut_threshold = 3.5e-6  # threshold for applying small_undercut
         self.t_SOI = 40e-6  # thickness of silicon (m)
