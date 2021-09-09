@@ -1,3 +1,6 @@
+import sys
+sys.path.append(r"C:\Users\ahadrauf\Desktop\Research\Pister\gca_dynamics")
+
 from assembly import AssemblyGCA
 from process import *
 import numpy as np
@@ -69,7 +72,7 @@ if __name__ == "__main__":
     Fes_calc_method, Fb_calc_method = 2, 2
     # name_clarifier = "_V_supportW_pullin_release_undercut={:.3f}_Fes=v{}_Fb=v{}".format(undercut*1e6, Fes_calc_method,
     #                                                                                     Fb_calc_method)
-    name_clarifier = "_V_supportW_pullin_release_undercut=custom_r2_min_Fes=v{}_Fb=v{}".format(undercut*1e6, Fes_calc_method, Fb_calc_method)
+    name_clarifier = "_V_supportW_pullin_release_undercut=custom_r2_min_fixedtmax_Fes=v{}_Fb=v{}".format(Fes_calc_method, Fb_calc_method)
     timestamp = now.strftime("%Y%m%d_%H_%M_%S") + name_clarifier
     print(timestamp)
 
@@ -117,7 +120,8 @@ if __name__ == "__main__":
 
     # Pullin measurements
     # process = SOI()
-    undercut = [2.2e-07, 4.000000000000002e-07, 3.900000000000002e-07, 3.8000000000000017e-07, 4.5000000000000024e-07, 3.000000000000001e-07, 2e-07, 3.8000000000000017e-07]  # R2 min
+    # undercut = [2.2e-07, 4.000000000000002e-07, 3.900000000000002e-07, 3.8000000000000017e-07, 4.5000000000000024e-07, 3.000000000000001e-07, 2e-07, 3.8000000000000017e-07]  # R2 min
+    undercut = [2.2e-07, 4.000000000000002e-07, 3.900000000000002e-07, 3.8000000000000017e-07, 4.800000000000003e-07, 3.000000000000001e-07, 5.000000000000003e-07, 3.8000000000000017e-07]  # R2 min (after 1e6 skip correction)
     # undercut = [2.2e-07, 4.000000000000002e-07, 3.8000000000000017e-07, 3.7000000000000016e-07, 3.7000000000000016e-07, 2.7000000000000006e-07, 3.300000000000001e-07, 2e-07]  # R2 avg (worse)
     # undercut = [4.300000000000002e-07, 5.000000000000003e-07, 5.000000000000003e-07, 5.000000000000003e-07, 5.000000000000003e-07, 5.000000000000003e-07, 2e-07, 5.000000000000003e-07]  # R2 pullin
     for idy in range(len(supportW_values)):
@@ -139,7 +143,9 @@ if __name__ == "__main__":
         # V_test = np.sort(np.append(V_values, [pullin_V[idy], pullin_V[idy]+0.2]))  # Add some extra values to test
         V_values = pullin_V[idy]
         # V_test = V_values
-        V_test = list(np.arange(min(V_values), max(V_values) + 1, 1.))
+        # V_test = list(np.arange(min(V_values), max(V_values) + 1, 1.))
+        V_test = np.sort(np.append(np.arange(min(V_values), max(V_values) + 1, 0.1),
+                                   np.arange(min(V_values) + 1, max(V_values) + 1, 1.)))
         for V in V_test:
             start_time = time.process_time()
             u = setup_inputs(V=V, Fext=Fext)
@@ -190,7 +196,9 @@ if __name__ == "__main__":
 
         V_values = release_V[idy]
         # V_test = V_values
-        V_test = list(np.arange(min(V_values), max(V_values) + 1, 1.))
+        # V_test = list(np.arange(min(V_values), max(V_values) + 1, 1.))
+        V_test = np.sort(np.append(np.arange(min(V_values), max(V_values) + 1, 0.1),
+                                   np.arange(min(V_values) + 1, max(V_values) + 1, 1.)))
         for V in V_test:
             start_time = time.process_time()
             model = setup_model_release(V=V, Fext=Fext, process=process)

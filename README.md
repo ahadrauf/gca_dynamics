@@ -75,6 +75,11 @@ Consider mio5.varmats_from_mat to split file into single variable files
   * Probably not an issue? This is caused by some file formatting issue in how I'm reading the data files (in the ```/data```
     folder). I'm not sure exactly how to fix this, to be honest - fiddling with the import settings should
   be enough, but it reads the data correctly so who cares?
+    
+* I get ```ModuleNotFoundError``` errors when trying to run scripts in command line
+  * I wish I knew the issue too - it's something to do with Python's relative import formatting. I coded this in PyCharm,
+  which handled all the relative import stuff for me, but I couldn't get any of the scripts to work in command line. The 
+    `__init__.py` files seem to do nothing, at least.
 
 ## Acknowledgements
 This library originated from work by Daniel Contreras (Ph.D.), Craig Schindler (Ph.D.), and Ryan Shih (M.S.)

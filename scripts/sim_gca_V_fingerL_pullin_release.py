@@ -72,7 +72,7 @@ if __name__ == "__main__":
     undercut = SOI().undercut
     Fes_calc_method, Fb_calc_method = 2, 2
     # name_clarifier = "_V_fingerL_pullin_release_undercut={:.3f}_Fes=v{}_Fb=v{}".format(undercut*1e6, Fes_calc_method, Fb_calc_method)
-    name_clarifier = "_V_fingerL_pullin_release_undercut=padded_uc_min_Fes=v{}_Fb=v{}".format(Fes_calc_method, Fb_calc_method)
+    name_clarifier = "_V_fingerL_pullin_release_undercut=fixedtmax1000e6_Fes=v{}_Fb=v{}".format(Fes_calc_method, Fb_calc_method)
     timestamp = now.strftime("%Y%m%d_%H_%M_%S") + name_clarifier
     print(timestamp)
 
@@ -122,7 +122,10 @@ if __name__ == "__main__":
     # process = SOI()
     # undercut = [4.5e-07, 4.0e-07, 3.4e-07, 3.0e-07, 2.9e-07, 2.8e-07, 2.4e-07, 2.8e-07, 2.6e-07]  # based on UC min/UC avg
     # undercut = [4.5000000000000024e-07, 4.000000000000002e-07, 3.4000000000000013e-07, 3.000000000000001e-07, 2.900000000000001e-07, 2.8000000000000007e-07, 2.4000000000000003e-07, 2.8000000000000007e-07, 3.000000000000001e-07]  # based on padded UC average
-    undercut = [4.5000000000000024e-07, 4.000000000000002e-07, 3.4000000000000013e-07, 3.300000000000001e-07, 2.900000000000001e-07, 2.8000000000000007e-07, 2.900000000000001e-07, 3.300000000000001e-07, 3.100000000000001e-07]  # based on padded UC min
+    # undercut = [4.5000000000000024e-07, 4.000000000000002e-07, 3.4000000000000013e-07, 3.300000000000001e-07, 2.900000000000001e-07, 2.8000000000000007e-07, 2.900000000000001e-07, 3.300000000000001e-07, 3.100000000000001e-07]  # based on padded UC min
+    # undercut = [4.5000000000000024e-07, 4.000000000000002e-07, 3.4000000000000013e-07, 3.300000000000001e-07, 2.900000000000001e-07, 2.8000000000000007e-07, 2.7000000000000006e-07, 3.300000000000001e-07, 3.100000000000001e-07]  # based on padded UC min (corrected t_max)
+    undercut = [4.5000000000000024e-07, 4.000000000000002e-07, 3.4000000000000013e-07, 3.8000000000000017e-07, 2.900000000000001e-07, 2.8000000000000007e-07, 4.100000000000002e-07, 3.4000000000000013e-07, 3.100000000000001e-07]  # based on padded UC min (t max = 1e-3)
+    # undercut = [4.5000000000000024e-07, 4.000000000000002e-07, 3.4000000000000013e-07, 3.8000000000000017e-07, 2.900000000000001e-07, 2.8000000000000007e-07, 3.6000000000000015e-07, 3.4000000000000013e-07, 3.100000000000001e-07]
     # undercut = [5.000000000000003e-07, 4.200000000000002e-07, 4.000000000000002e-07, 3.200000000000001e-07, 2.5000000000000004e-07, 3.100000000000001e-07, 2.8000000000000007e-07, 3.000000000000001e-07, 2.6000000000000005e-07]  # based on RMSE max
     for idy in range(len(fingerL_values)):
         uc = undercut[idy]
@@ -139,9 +142,9 @@ if __name__ == "__main__":
 
         # V_test = np.sort(np.append(V_values, [pullin_V[idy], pullin_V[idy]+0.2]))  # Add some extra values to test
         V_values = pullin_V[idy]
-        # V_test = V_values
-        V_test = list(np.arange(min(V_values), max(V_values) + 1, 0.1))
-        V_test = V_test[:20]
+        V_test = V_values
+        # V_test = list(np.arange(min(V_values), max(V_values) + 1, 0.1))
+        # V_test = V_test[:20]
         for V in V_test:
             start_time = time.process_time()
             u = setup_inputs(V=V, Fext=Fext)
@@ -171,15 +174,15 @@ if __name__ == "__main__":
                 actual.append(pullin_avg[idy][idx])
                 idx = np.where(V_converged == V)[0][0]
                 pred.append(times_converged[idx])
-        # r2 = r2_score(actual, pred)
-        # print("Pullin Pred:", pred, "Actual:", actual)
-        # ratios = [p/a for p, a in zip(pred, actual)]
-        # print("Pullin Ratios:", np.max(ratios), np.min(ratios), ratios)
-        # print("R2 score for L=", fingerL, "=", r2)
-        # r2_scores_pullin.append(r2)
-        # rmse = mean_squared_error(actual, pred, squared=False)
-        # rmse_pullin.append(rmse)
-        # print("RMSE score for L=", fingerL, "=", rmse)
+        r2 = r2_score(actual, pred)
+        print("Pullin Pred:", pred, "Actual:", actual)
+        ratios = [p/a for p, a in zip(pred, actual)]
+        print("Pullin Ratios:", np.max(ratios), np.min(ratios), ratios)
+        print("R2 score for L=", fingerL, "=", r2)
+        r2_scores_pullin.append(r2)
+        rmse = mean_squared_error(actual, pred, squared=False)
+        rmse_pullin.append(rmse)
+        print("RMSE score for L=", fingerL, "=", rmse)
 
     # Release measurements
     for idy in range(len(fingerL_values)):
@@ -192,9 +195,9 @@ if __name__ == "__main__":
         times_converged = []
 
         V_values = release_V[idy]
-        # V_test = V_values
-        V_test = list(np.arange(min(V_values), max(V_values) + 1, 0.1))
-        V_test = V_test[:20]
+        V_test = V_values
+        # V_test = list(np.arange(min(V_values), max(V_values) + 1, 0.1))
+        # V_test = V_test[:20]
         for V in V_test:
             start_time = time.process_time()
             model = setup_model_release(V=V, Fext=Fext, process=process)
@@ -229,21 +232,21 @@ if __name__ == "__main__":
                 actual.append(release_avg[idy][idx])
                 idx = np.where(V_converged == V)[0][0]
                 pred.append(times_converged[idx])
-        # r2 = r2_score(actual, pred)
-        # print("Release Pred:", pred, "Actual:", actual)
-        # ratios = [p/a for p, a in zip(pred, actual)]
-        # print("Release Ratios:", np.max(ratios), np.min(ratios), ratios)
-        # print("R2 score for L=", fingerL, "=", r2)
-        # r2_scores_release.append(r2)
-        # rmse = mean_squared_error(actual, pred, squared=False)
-        # rmse_release.append(rmse)
-        # print("RMSE score for L=", fingerL, "=", rmse)
+        r2 = r2_score(actual, pred)
+        print("Release Pred:", pred, "Actual:", actual)
+        ratios = [p/a for p, a in zip(pred, actual)]
+        print("Release Ratios:", np.max(ratios), np.min(ratios), ratios)
+        print("R2 score for L=", fingerL, "=", r2)
+        r2_scores_release.append(r2)
+        rmse = mean_squared_error(actual, pred, squared=False)
+        rmse_release.append(rmse)
+        print("RMSE score for L=", fingerL, "=", rmse)
 
-    # print("Finger L values:", [L*1e6 for L in fingerL_values])
-    # print("Pullin R2 scores:", r2_scores_pullin, np.mean(r2_scores_pullin), np.std(r2_scores_pullin))
-    # print("Release R2 scores:", r2_scores_release, np.mean(r2_scores_release), np.std(r2_scores_release))
-    # print("Pullin RMSE scores:", rmse_pullin, np.mean(rmse_pullin), np.std(rmse_pullin))
-    # print("Release RMSE scores:", rmse_release, np.mean(rmse_release), np.std(rmse_release))
+    print("Finger L values:", [L*1e6 for L in fingerL_values])
+    print("Pullin R2 scores:", r2_scores_pullin, np.mean(r2_scores_pullin), np.std(r2_scores_pullin))
+    print("Release R2 scores:", r2_scores_release, np.mean(r2_scores_release), np.std(r2_scores_release))
+    print("Pullin RMSE scores:", rmse_pullin, np.mean(rmse_pullin), np.std(rmse_pullin))
+    print("Release RMSE scores:", rmse_release, np.mean(rmse_release), np.std(rmse_release))
 
     # axs[0, ny-1].legend([legend_pullin, legend_release], ['Pull-in', 'Release'])
     # fig.legend([legend_pullin], ['Pull-in'], loc='lower right', ncol=2)

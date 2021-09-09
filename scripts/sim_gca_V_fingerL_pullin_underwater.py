@@ -1,16 +1,14 @@
 import time
-
 from assembly import AssemblyGCA
 import numpy as np
-
-np.set_printoptions(precision=3, suppress=True)
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
 from scipy.io import loadmat, savemat
 from datetime import datetime
-from utils import *
 from sklearn.metrics import r2_score
 from process import *
+
+np.set_printoptions(precision=3, suppress=True)
 
 
 def setup_model_pullin():
