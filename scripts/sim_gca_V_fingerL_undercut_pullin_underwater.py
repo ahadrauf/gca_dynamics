@@ -95,7 +95,9 @@ if __name__ == "__main__":
 
     # Simulation metrics
     # undercut_range = np.arange(0.2e-6, 0.501e-6, 0.01e-6)
-    undercut_range = np.arange(0.3e-6, 0.501e-6, 0.01e-6)
+    # undercut_range = np.arange(0.3e-6, 0.501e-6, 0.01e-6)
+    undercut_range = np.append(np.arange(0.33e-6, 0.3801e-6, 0.0025e-6),
+                               np.arange(0.45e-6, 0.481e-6, 0.0025e-6))
     best_undercut_pullin = []
     best_undercut_release = []
     pullin_V_results = {undercut: [] for undercut in undercut_range}

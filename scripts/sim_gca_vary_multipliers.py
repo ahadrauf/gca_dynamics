@@ -1,3 +1,6 @@
+import sys
+sys.path.append(r"C:\Users\ahadrauf\Desktop\Research\Pister\gca_dynamics")
+
 from assembly import AssemblyGCA
 import numpy as np
 from scipy.integrate import solve_ivp
@@ -5,6 +8,7 @@ import matplotlib.pyplot as plt
 from scipy.io import loadmat, savemat
 from datetime import datetime
 from process import *
+import time
 
 
 def setup_model_pullin():
@@ -40,7 +44,7 @@ def sim_gca(model, u, t_span, verbose=False):
     terminate_simulation.terminal = True
 
     sol = solve_ivp(f, t_span, x0, events=[terminate_simulation], dense_output=True,
-                    max_step=0.25e-6)  # , method="LSODA")
+                    max_step=0.1e-6)  # , method="LSODA")
     return sol
 
 
@@ -83,10 +87,10 @@ if __name__ == "__main__":
     Fext = 0.
 
     V = 60
-    mcon_range = np.arange(0.1, 2.1, 0.01)
-    Fescon_range = np.arange(0.1, 2.1, 0.01)
-    Fbcon_range = np.arange(0.1, 2.1, 0.01)
-    Fkcon_range = np.arange(0.1, 2.1, 0.01)
+    mcon_range = np.arange(0.1, 2.1, 0.1)
+    Fescon_range = np.arange(0.1, 2.1, 0.1)
+    Fbcon_range = np.arange(0.1, 2.1, 0.1)
+    Fkcon_range = np.arange(0.1, 2.1, 0.1)
     # latexify(fig_width=6, columns=3)
     fig, axs = setup_plot(2, 2, x_label="Scaling Variable", y_label="Time (us)")
 
@@ -98,6 +102,7 @@ if __name__ == "__main__":
     x_converged = []
     times_converged = []
     for mcon in mcon_range:
+        start_time = time.process_time()
         model = setup_model_pullin()
         model.gca.mcon = mcon
         u = setup_inputs(V=V, Fext=Fext)
@@ -106,6 +111,10 @@ if __name__ == "__main__":
         if len(sol.t_events[0]) > 0:
             x_converged.append(mcon)
             times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
+
+        end_time = time.process_time()
+        # print("Runtime for con =", mcon, ", V =", V, "=", end_time - start_time, "=",
+#               end_time - start_time, '-->', {v: "{:0.2f}".format(t) for v, t in zip(x_converged, times_converged)})
     axs[0, 0].plot(x_converged, times_converged, 'b')
     display_stats(x_converged, times_converged, "Pullin mcon")
 
@@ -113,6 +122,7 @@ if __name__ == "__main__":
     x_converged = []
     times_converged = []
     for mcon in mcon_range:
+        start_time = time.process_time()
         model = setup_model_release(V=V, Fext=Fext)
         model.gca.mcon = mcon
         u = setup_inputs(V=0., Fext=Fext)
@@ -121,6 +131,9 @@ if __name__ == "__main__":
         if len(sol.t_events[0]) > 0:
             x_converged.append(mcon)
             times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
+        end_time = time.process_time()
+        # print("Runtime for con =", mcon, ", V =", V, "=", end_time - start_time, "=",
+#               end_time - start_time, '-->', {v: "{:0.2f}".format(t) for v, t in zip(x_converged, times_converged)})
     axs[0, 0].plot(x_converged, times_converged, 'r')
     # axs[0, 0].legend(["Pull-in", "Release"])
     axs[0, 0].set_title(r"Varying $m_{GCA}$", fontsize=12)
@@ -138,6 +151,7 @@ if __name__ == "__main__":
     x_converged = []
     times_converged = []
     for Fescon in Fescon_range:
+        start_time = time.process_time()
         model = setup_model_pullin()
         model.gca.Fescon = Fescon
         u = setup_inputs(V=V, Fext=Fext)
@@ -146,6 +160,9 @@ if __name__ == "__main__":
         if len(sol.t_events[0]) > 0:
             x_converged.append(Fescon)
             times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
+        end_time = time.process_time()
+        # print("Runtime for con =", mcon, ", V =", V, "=", end_time - start_time, "=",
+#               end_time - start_time, '-->', {v: "{:0.2f}".format(t) for v, t in zip(x_converged, times_converged)})
     axs[0, 1].plot(x_converged, times_converged, 'b')
     display_stats(x_converged, times_converged, "Pullin Fescon")
 
@@ -153,12 +170,16 @@ if __name__ == "__main__":
     x_converged = []
     times_converged = []
     for Fescon in Fescon_range:
+        start_time = time.process_time()
         model = setup_model_release(V=V, Fext=Fext, Fescon=Fescon)
         u = setup_inputs(V=0., Fext=Fext)
         sol = sim_gca(model, u, t_span)
         if len(sol.t_events[0]) > 0:
             x_converged.append(Fescon)
             times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
+        end_time = time.process_time()
+        # print("Runtime for con =", mcon, ", V =", V, "=", end_time - start_time, "=",
+#               end_time - start_time, '-->', {v: "{:0.2f}".format(t) for v, t in zip(x_converged, times_converged)})
     axs[0, 1].plot(x_converged, times_converged, 'r')
     # axs[0, 1].legend(["Pull-in", "Release"])
     axs[0, 1].set_title(r"Varying $F_{es}$", fontsize=12)
@@ -175,6 +196,7 @@ if __name__ == "__main__":
     x_converged = []
     times_converged = []
     for Fbcon in Fbcon_range:
+        start_time = time.process_time()
         model = setup_model_pullin()
         model.gca.Fbcon = Fbcon
         u = setup_inputs(V=V, Fext=Fext)
@@ -183,8 +205,11 @@ if __name__ == "__main__":
         if len(sol.t_events[0]) > 0:
             x_converged.append(Fbcon)
             times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
+        end_time = time.process_time()
+        # print("Runtime for con =", mcon, ", V =", V, "=", end_time - start_time, "=",
+#               end_time - start_time, '-->', {v: "{:0.2f}".format(t) for v, t in zip(x_converged, times_converged)})
     axs[1, 0].plot(x_converged, times_converged, 'b')
-    display_stats(x_converged, times_converged, "Pullin Fbkcon")
+    display_stats(x_converged, times_converged, "Pullin Fbcon")
 
     # Release
     x_converged = []
@@ -196,8 +221,12 @@ if __name__ == "__main__":
         sol = sim_gca(model, u, t_span)
 
         if len(sol.t_events[0]) > 0:
+            start_time = time.process_time()
             x_converged.append(Fbcon)
             times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
+        end_time = time.process_time()
+        # print("Runtime for con =", mcon, ", V =", V, "=", end_time - start_time, "=",
+#               end_time - start_time, '-->', {v: "{:0.2f}".format(t) for v, t in zip(x_converged, times_converged)})
     axs[1, 0].plot(x_converged, times_converged, 'r')
     # axs[1, 0].legend(["Pull-in", "Release"])
     axs[1, 0].set_title(r"Varying $F_b$", fontsize=12)
@@ -206,7 +235,9 @@ if __name__ == "__main__":
 
     model = setup_model_pullin()
     label = r"$\mu$=18.5 $\mu$Pa$\cdot$s"
-    axs[1, 0].annotate(label, xy=(0.45, 0.96), xycoords='axes fraction', color='k',
+    # axs[1, 0].annotate(label, xy=(0.45, 0.96), xycoords='axes fraction', color='k',
+    #                    xytext=(0, 0), textcoords='offset points', ha='right', va='top')
+    axs[1, 0].annotate(label, xy=(0.52, 0.45), xycoords='axes fraction', color='k',
                        xytext=(0, 0), textcoords='offset points', ha='right', va='top')
 
     ##### ax[1, 1] = Varying Fk
@@ -214,6 +245,7 @@ if __name__ == "__main__":
     x_converged = []
     times_converged = []
     for Fkcon in Fkcon_range:
+        start_time = time.process_time()
         model = setup_model_pullin()
         model.gca.Fkcon = Fkcon
         u = setup_inputs(V=V, Fext=Fext)
@@ -222,6 +254,9 @@ if __name__ == "__main__":
         if len(sol.t_events[0]) > 0:
             x_converged.append(Fkcon)
             times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
+        end_time = time.process_time()
+        # print("Runtime for con =", mcon, ", V =", V, "=", end_time - start_time, "=",
+#               end_time - start_time, '-->', {v: "{:0.2f}".format(t) for v, t in zip(x_converged, times_converged)})
     l1 = axs[1, 1].plot(x_converged, times_converged, 'b')
     display_stats(x_converged, times_converged, "Pullin Fkcon")
 
@@ -229,6 +264,7 @@ if __name__ == "__main__":
     x_converged = []
     times_converged = []
     for Fkcon in Fkcon_range:
+        start_time = time.process_time()
         model = setup_model_release(V=V, Fext=Fext, Fkcon=Fkcon)
         # model.gca.Fkcon = Fkcon
         u = setup_inputs(V=0., Fext=Fext)
@@ -237,6 +273,9 @@ if __name__ == "__main__":
         if len(sol.t_events[0]) > 0:
             x_converged.append(Fkcon)
             times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
+        end_time = time.process_time()
+        # print("Runtime for con =", mcon, ", V =", V, "=", end_time - start_time, "=",
+#               end_time - start_time, '-->', {v: "{:0.2f}".format(t) for v, t in zip(x_converged, times_converged)})
     l2 = axs[1, 1].plot(x_converged, times_converged, 'r')
     axs[1, 1].legend(["Pull-in", "Release"])
     axs[1, 1].set_title(r"Varying $F_k$", fontsize=12)

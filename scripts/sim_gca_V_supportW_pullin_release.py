@@ -144,7 +144,7 @@ if __name__ == "__main__":
         V_values = pullin_V[idy]
         # V_test = V_values
         # V_test = list(np.arange(min(V_values), max(V_values) + 1, 1.))
-        V_test = np.sort(np.append(np.arange(min(V_values), max(V_values) + 1, 0.1),
+        V_test = np.sort(np.append(np.arange(min(V_values), min(V_values) + 1, 0.1),
                                    np.arange(min(V_values) + 1, max(V_values) + 1, 1.)))
         for V in V_test:
             start_time = time.process_time()
@@ -156,7 +156,7 @@ if __name__ == "__main__":
                 times_converged.append(sol.t_events[0][0]*1e6)  # us conversion
             end_time = time.process_time()
             print("Runtime for w =", supportW, ", V =", V, "=", end_time - start_time, ", undercut =", uc, "=",
-                  end_time - start_time, '-->', {v: t for v, t in zip(V_converged, times_converged)})
+                  end_time - start_time, '-->', {v: "{:0.2f}".format(t) for v, t in zip(V_converged, times_converged)})
         print(supportW, V_converged, times_converged)
 
         # axs[idy//ny, idy%ny].plot(V_converged, times_converged)
@@ -197,7 +197,7 @@ if __name__ == "__main__":
         V_values = release_V[idy]
         # V_test = V_values
         # V_test = list(np.arange(min(V_values), max(V_values) + 1, 1.))
-        V_test = np.sort(np.append(np.arange(min(V_values), max(V_values) + 1, 0.1),
+        V_test = np.sort(np.append(np.arange(min(V_values), min(V_values) + 1, 0.1),
                                    np.arange(min(V_values) + 1, max(V_values) + 1, 1.)))
         for V in V_test:
             start_time = time.process_time()
@@ -219,7 +219,7 @@ if __name__ == "__main__":
 
             end_time = time.process_time()
             print("Runtime for w =", supportW, ", V =", V, "=", end_time - start_time, ", undercut =", uc, "=",
-                  end_time - start_time, '-->', {v: t for v, t in zip(V_converged, times_converged)})
+                  end_time - start_time, '-->', {v: "{:0.2f}".format(t) for v, t in zip(V_converged, times_converged)})
         print(times_converged)
         # axs[idy//ny, idy%ny].plot(V_converged, times_converged, 'r')
         line, = axs[idy//ny, idy%ny].plot(V_converged, times_converged, 'r')

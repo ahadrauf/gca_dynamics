@@ -47,18 +47,23 @@ def setup_inputs(**kwargs):
 
 
 def setup_inputs_RC_pullin(**kwargs):
-    R = 44e3
-    C = 0.38e-12
-    RC = R*C
+    # R = 44e3
+    # C = 0.38e-12
+    R = 205244.8126133541 + 217573.24999999994
+    C = 8.043260992499999e-13
+    RC = R*C/10
+    print("RC", RC)
     V = kwargs["V"]
     Fext = kwargs["Fext"]
     return lambda t, x: np.array([V*(1-np.exp(-t/RC)), Fext])
 
 
 def setup_inputs_RC_release(**kwargs):
-    R = 44e3
-    C = 0.38e-12
-    RC = R*C
+    # R = 44e3
+    # C = 0.38e-12
+    R = 205244.8126133541 + 217573.24999999994
+    C = 8.043260992499999e-13
+    RC = R*C/10
     V = kwargs["V"]
     Fext = kwargs["Fext"]
     return lambda t, x: np.array([V*np.exp(-t/RC), Fext])
@@ -71,7 +76,7 @@ def sim_gca(model, u, t_span, verbose=False):
     terminate_simulation.terminal = True
 
     sol = solve_ivp(f, t_span, x0, events=[terminate_simulation], dense_output=True,
-                    max_step=0.25e-6)  # , method="LSODA")
+                    max_step=0.1e-6)  # , method="LSODA")
     return sol
 
 
@@ -108,7 +113,7 @@ if __name__ == "__main__":
     timestamp = now.strftime("%Y%m%d_%H_%M_%S") + name_clarifier
     print(timestamp)
 
-    t_span = [0, 200e-6]
+    t_span = [0, 400e-6]
     Fext = 0
 
     data = loadmat("../data/frequency_vs_velocity.mat")
@@ -166,7 +171,7 @@ if __name__ == "__main__":
         sol = sim_gca(model, u, t_span)
         t_RT = sol.t_events[0][0]
 
-        print(V, t_P, t_PT, t_R, t_RT)
+        print(V, t_P*1e6, t_PT*1e6, t_R*1e6, t_RT*1e6)
 
         ##################### Calculate frequency from conditions #####################
         # Condition 1: having pawl A come in contact before pawl B releases contact (tPT < tRT + 0.25T)
@@ -198,6 +203,6 @@ if __name__ == "__main__":
     plt.ylabel("Velocity (m/s)")
 
     plt.tight_layout()
-    plt.savefig("figures/" + timestamp + ".png")
-    plt.savefig("figures/" + timestamp + ".pdf")
+    plt.savefig("../figures/" + timestamp + ".png")
+    plt.savefig("../figures/" + timestamp + ".pdf")
     plt.show()
