@@ -55,7 +55,7 @@ Note that the `max_step` parameter in `solve_ivp()` is actually quite important 
 in Python's implementation of `solve_ivp()`, for small time scales like what we're working with
 the final time recorded by the `terminate_simulation` condition will be some multiple of `max_step`.
 Thus, for production code it's generally good to have low values for `max_step` (e.g. 0.1e-6), but for 
-general speed and quick prototyping it's sufficient to have larger values (e.g. 0.25e-6, 0.5e-6).
+quick prototyping it's sufficient to have larger values (e.g. 0.25e-6, 0.5e-6).
 
 ## FAQ's
 * I get the error ```gca.py:149: RuntimeWarning: invalid value encountered in sqrt``` or ```gca.py:177: IntegrationWarning: The occurrence of roundoff error is detected, which prevents 
@@ -77,9 +77,12 @@ Consider mio5.varmats_from_mat to split file into single variable files
   be enough, but it reads the data correctly so who cares?
     
 * I get ```ModuleNotFoundError``` errors when trying to run scripts in command line
-  * I wish I knew the issue too - it's something to do with Python's relative import formatting. I coded this in PyCharm,
-  which handled all the relative import stuff for me, but I couldn't get any of the scripts to work in command line. The 
-    `__init__.py` files seem to do nothing, at least.
+  * Add the following code to the beginning of your script file, making sure to change the part in brackets to your 
+  specific installation
+  ```python
+  import sys
+  sys.path.append(r"C:<path to gca_dynamics folder>")
+  ```
 
 ## Acknowledgements
 This library originated from work by Daniel Contreras (Ph.D.), Craig Schindler (Ph.D.), and Ryan Shih (M.S.)

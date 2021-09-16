@@ -1,10 +1,11 @@
+"""
+Defines a laterally oriented electrostatic gap closing actuator (GCA)
+"""
+
 from process import SOI
 import numpy as np
 from scipy.integrate import quad
 import csv
-import matplotlib.pyplot as plt
-
-np.set_printoptions(precision=3, suppress=True)
 
 
 class GCA:
@@ -28,9 +29,9 @@ class GCA:
 
         V, Fext = self.unzip_input(u)
         Fes = self.Fes(x, u, calc_method=Fes_calc_method)
-        Fb = self.Fb(x, u, calc_method=Fb_calc_method)
+        Fb, Fbsf, Fbcf = self.Fb(x, u, calc_method=Fb_calc_method)
         Fk = self.Fk(x, u)
-        self.add_to_sim_log(['t', 'Fes', 'Fb', 'Fk'], [t, Fes, Fb, Fk])
+        self.add_to_sim_log(['t', 'Fes', 'Fb', 'Fk', 'Fbsf', 'Fbcf'], [t, Fes, Fb, Fk, Fbsf, Fbcf])
 
         # print(t, x[0], x[1], Fes, Fb, Fk, Fes - Fb - Fk - Fext)
 
@@ -55,24 +56,27 @@ class GCA:
             else:
                 Fes = 0
 
-        return self.Fescon*Fes
+        # return self.Fescon*Fes
+        return Fes  # Fescon handled within Fes functions
 
     def Fk(self, x, u):
         x, xdot = self.unzip_state(x)
         k = self.k_support
+        Fk = self.Fkcon*k*x
 
         # A stop-gap measure for velocity testing simulations
         # Note that 0.2um undercut for pawl-to-shuttle gaps, as mentioned in Craig's dissertation pg. 32
         # https://www2.eecs.berkeley.edu/Pubs/TechRpts/2020/EECS-2020-73.pdf
-        # if x > (3e-6 + 2*0.2e-6):
-        #     Estar = self.process.E/(1 - self.process.v**2)
-        #     w_pawl = 4e-6 - 2*self.process.undercut
-        #     L_pawl = 122e-6
-        #     I_pawl = w_pawl**3 * self.process.t_SOI / 12
-        #     k += 3*Estar*I_pawl/L_pawl**3
+        if x > (3e-6 + 2*0.2e-6):
+            Estar = self.process.E/(1 - self.process.v**2)
+            w_pawl = 4e-6 - 2*self.process.undercut
+            L_pawl = 122e-6
+            I_pawl = w_pawl**3*self.process.t_SOI/12
+            k += 3*Estar*I_pawl/L_pawl**3
+            Fk += self.Fkcon*k*(x - (3e-6 + 2*0.2e-6))/np.cos(np.deg2rad(65))
         # print(self.spineA*self.process.t_SOI*self.process.density)
 
-        return self.Fkcon*k*x
+        return Fk
 
     def Fb(self, x, u, calc_method=2):
         x, xdot = self.unzip_state(x)
@@ -156,11 +160,11 @@ class GCA:
 
         # Total damping
         b = bsf + bcf
-        return self.Fbcon*b*xdot
+        return self.Fbcon*b*xdot, self.Fbcon*bsf*xdot, self.Fbcon*bcf*xdot
 
     def Fes_calc1(self, x, V):
         return self.Nfing*0.5*V**2*self.process.eps0*self.process.t_SOI*self.fingerL*(
-                1/(self.gf - x)**2 - 1/(self.gb + x)**2)
+                1/(self.gf - x)**2 - 1/(self.gb + x)**2)*self.Fescon
 
     def Fes_calc2(self, x, V):
         """
@@ -182,7 +186,7 @@ class GCA:
             # gf = 1e-12
             # gb = self.gb + self.gf
         beta = gb/gf
-        Vtilde = V*np.sqrt(6*self.process.eps0*self.fingerL_total**4/(Estar*self.fingerW**3*gf**3))
+        Vtilde = V*np.sqrt(6*self.process.eps0*self.fingerL_total**4/(Estar*self.fingerW**3*gf**3))*np.sqrt(self.Fescon)
         l = np.power(Vtilde**2*(2/beta**3 + 2), 0.25)
 
         try:
@@ -206,7 +210,7 @@ class GCA:
         y = lambda xi_tilde: (gf*(c0*np.exp(-l*xi_tilde) + c1*np.exp(l*xi_tilde) + c2*
                                   np.sin(l*xi_tilde) + c3*np.cos(l*xi_tilde) - b[0]))  # We only integrate over xi >= a
 
-        dF_dx = lambda xi: self.Nfing*0.5*V**2*self.process.eps0*self.process.t_SOI* \
+        dF_dx = lambda xi: self.Fescon*self.Nfing*0.5*V**2*self.process.eps0*self.process.t_SOI* \
                            (1/(gf - y(xi/self.fingerL_total))**2 - 1/(gb + y(xi/self.fingerL_total))**2)
 
         Fes = quad(dF_dx, a*self.fingerL_total, self.fingerL_total)[0]

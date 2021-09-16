@@ -1,3 +1,7 @@
+"""
+Simulate the pull-in and release of a GCA vs. voltage while sweeping over finger lengths
+"""
+
 from assembly import AssemblyGCA
 from process import *
 import numpy as np

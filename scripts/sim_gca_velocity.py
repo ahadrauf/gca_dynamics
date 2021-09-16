@@ -51,11 +51,12 @@ def setup_inputs_RC_pullin(**kwargs):
     # C = 0.38e-12
     R = 205244.8126133541 + 217573.24999999994
     C = 8.043260992499999e-13
-    RC = R*C/10
+    RC = R*C
     print("RC", RC)
     V = kwargs["V"]
     Fext = kwargs["Fext"]
-    return lambda t, x: np.array([V*(1-np.exp(-t/RC)), Fext])
+    # return lambda t, x: np.array([V*(1-np.exp(-t/RC)), Fext])
+    return lambda t, x: np.array([V, Fext])  # simulate infinite RC constants
 
 
 def setup_inputs_RC_release(**kwargs):
@@ -63,10 +64,11 @@ def setup_inputs_RC_release(**kwargs):
     # C = 0.38e-12
     R = 205244.8126133541 + 217573.24999999994
     C = 8.043260992499999e-13
-    RC = R*C/10
+    RC = R*C
     V = kwargs["V"]
     Fext = kwargs["Fext"]
-    return lambda t, x: np.array([V*np.exp(-t/RC), Fext])
+    # return lambda t, x: np.array([V*np.exp(-t/RC), Fext])
+    return lambda t, x: np.array([0, Fext])  # simulate infinite RC constants
 
 
 def sim_gca(model, u, t_span, verbose=False):
@@ -109,7 +111,7 @@ def plot_data(fig, axs, frequency, velocity_avg, velocity_std, velocity_fitted, 
 
 if __name__ == "__main__":
     now = datetime.now()
-    name_clarifier = "_frequency_vs_velocity_RC_pawl"
+    name_clarifier = "_frequency_vs_velocity_RC_pawl_ignoreRC"
     timestamp = now.strftime("%Y%m%d_%H_%M_%S") + name_clarifier
     print(timestamp)
 
@@ -143,6 +145,14 @@ if __name__ == "__main__":
         # labels.append(r"L=%0.1f$\mu$m"%(fingerL_values[i - 1]*1e6))
 
     plot_data(fig, axs, frequency, velocity_avg, velocity_std, velocity_fitted, V_labels, line_labels)
+
+    for i in range(len(V_values)):
+        slopes = []
+        freq = frequency[i]
+        velocity = velocity_avg[i]
+        for j in range(1, len(freq)):
+            slopes.append((velocity[j] - velocity[0])/(freq[j] - freq[0])*1e3)
+        print(V_values[i], ['{:.2f}'.format(s) for s in slopes])
 
     for i in range(len(V_values)):
         V = V_values[i]

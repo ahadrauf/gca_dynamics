@@ -6,7 +6,7 @@ from process import *
 
 
 def setup_model_pullin():
-    model = AssemblyGCA(drawn_dimensions_filename="../layouts/fawn.csv", process=SOIwater())
+    model = AssemblyGCA(drawn_dimensions_filename="../layouts/fawn.csv", process=SOI())
     model.gca.x0 = model.gca.x0_pullin()
     model.gca.terminate_simulation = model.gca.pulled_in
     return model
@@ -15,8 +15,8 @@ def setup_model_pullin():
 def setup_model_release(**kwargs):
     u = [kwargs["V"], kwargs["Fext"]]
     model = AssemblyGCA(drawn_dimensions_filename="../layouts/fawn.csv", process=SOI())
-    model.gca.fingerL = 15.6e-6
-    model.gca.update_dependent_variables()
+    # model.gca.fingerL = 15.6e-6
+    # model.gca.update_dependent_variables()
     if "Fescon" in kwargs:
         model.gca.Fescon = kwargs["Fescon"]
     if "Fkcon" in kwargs:
@@ -38,12 +38,12 @@ def setup_inputs(**kwargs):
 
 
 def sim_gca(model, u, t_span):
-    f = lambda t, x: model.dx_dt(t, x, u, verbose=False, Fes_calc_method=2, Fb_calc_method=1)
+    f = lambda t, x: model.dx_dt(t, x, u, verbose=False, Fes_calc_method=2, Fb_calc_method=2)
     x0 = model.x0()
     terminate_simulation = lambda t, x: model.terminate_simulation(t, x)
     terminate_simulation.terminal = True
 
-    sol = solve_ivp(f, t_span, x0, events=[terminate_simulation], dense_output=True, max_step=0.5e-6, )
+    sol = solve_ivp(f, t_span, x0, events=[terminate_simulation], dense_output=True, max_step=0.1e-6, )
     return sol
 
 
@@ -73,6 +73,8 @@ def plot_solution(sol, t_sim, model, plt_title=None):
     t = t[t <= max(t_sim)]
     Fes = np.abs(model.gca.sim_log['Fes'][:len(t)])
     Fb = np.abs(model.gca.sim_log['Fb'][:len(t)])
+    Fbsf = np.abs(model.gca.sim_log['Fbsf'][:len(t)])
+    Fbcf = np.abs(model.gca.sim_log['Fbcf'][:len(t)])
     Fk = np.abs(model.gca.sim_log['Fk'][:len(t)])
     Ftot = np.abs([a + b + c for a, b, c in zip(model.gca.sim_log['Fes'][:len(t)],
                                                 model.gca.sim_log['Fb'][:len(t)],
@@ -80,7 +82,9 @@ def plot_solution(sol, t_sim, model, plt_title=None):
     eps = 1e-10
     if np.max(Fes) > eps:
         ax2.plot(t*1e6, Fes + eps, 'b', label='|Fes|', marker='.')
-    ax2.plot(t*1e6, Fb + eps, 'orange', label='|Fb|', marker='.')
+    # ax2.plot(t*1e6, Fb + eps, 'orange', label='|Fb|', marker='.')
+    ax2.plot(t*1e6, Fbsf + eps, 'orange', label='|Fb_sf|', marker='.')
+    ax2.plot(t*1e6, Fbcf + eps, 'pink', label='|Fb_cf|', marker='.')
     ax2.plot(t*1e6, Fk + eps, 'g', label='|Fk|', marker='.')
     ax2.plot(t*1e6, Ftot + eps, 'r', label='|Ftot|', marker='.')
     ax2.legend()
@@ -96,13 +100,13 @@ def plot_solution(sol, t_sim, model, plt_title=None):
 
 
 if __name__ == "__main__":
-    V = 60
+    V = 70
     # Fext = 50e-6
     Fext = 0.
-    # model = setup_model_pullin()
-    # u = setup_inputs(V=V, Fext=0.)  # Change V=V for pullin, V=0 for release
-    model = setup_model_release(V=V, Fext=Fext)  # Change for pullin/release
-    u = setup_inputs(V=0, Fext=Fext)  # Change V=V for pullin, V=0 for release
+    model = setup_model_pullin()
+    u = setup_inputs(V=V, Fext=0.)  # Change V=V for pullin, V=0 for release
+    # model = setup_model_release(V=V, Fext=Fext)  # Change for pullin/release
+    # u = setup_inputs(V=0, Fext=Fext)  # Change V=V for pullin, V=0 for release
 
     t_span = [0, 100e-6]
     sol = sim_gca(model, u, t_span)

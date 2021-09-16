@@ -70,7 +70,7 @@ def display_stats(x_converged, times_converged, label):
     time_nominal = times_converged[np.where(np.isclose(x_converged, 1.))[0][0]]
     time_50_down = times_converged[np.where(np.isclose(x_converged, 0.5))[0][0]]
     print("{}: con=0.5: {} (Ratio: {}), con=1: {}, con=1.5: {} (Ratio: {})".format(
-        label, time_50_down, time_nominal/time_50_down, time_nominal, time_50_up, time_nominal/time_50_up
+        label, time_50_down, 1 - time_50_down/time_nominal, time_nominal, time_50_up, 1 - time_50_up/time_nominal
     ))
 
 
@@ -87,10 +87,10 @@ if __name__ == "__main__":
     Fext = 0.
 
     V = 60
-    mcon_range = np.arange(0.1, 2.1, 0.1)
-    Fescon_range = np.arange(0.1, 2.1, 0.1)
-    Fbcon_range = np.arange(0.1, 2.1, 0.1)
-    Fkcon_range = np.arange(0.1, 2.1, 0.1)
+    mcon_range = np.arange(0.1, 2.1, 0.01)
+    Fescon_range = np.arange(0.1, 2.1, 0.01)
+    Fbcon_range = np.arange(0.1, 2.1, 0.01)
+    Fkcon_range = np.arange(0.1, 2.1, 0.01)
     # latexify(fig_width=6, columns=3)
     fig, axs = setup_plot(2, 2, x_label="Scaling Variable", y_label="Time (us)")
 
@@ -235,10 +235,10 @@ if __name__ == "__main__":
 
     model = setup_model_pullin()
     label = r"$\mu$=18.5 $\mu$Pa$\cdot$s"
-    # axs[1, 0].annotate(label, xy=(0.45, 0.96), xycoords='axes fraction', color='k',
-    #                    xytext=(0, 0), textcoords='offset points', ha='right', va='top')
-    axs[1, 0].annotate(label, xy=(0.52, 0.45), xycoords='axes fraction', color='k',
+    axs[1, 0].annotate(label, xy=(0.44, 0.96), xycoords='axes fraction', color='k',
                        xytext=(0, 0), textcoords='offset points', ha='right', va='top')
+    # axs[1, 0].annotate(label, xy=(0.52, 0.38), xycoords='axes fraction', color='k',
+    #                    xytext=(0, 0), textcoords='offset points', ha='left', va='top')
 
     ##### ax[1, 1] = Varying Fk
     # Pullin

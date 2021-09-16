@@ -1,3 +1,7 @@
+"""
+Simulate the pull-in and release of an underwater GCA vs. voltage while sweeping over finger lengths
+"""
+
 import time
 from assembly import AssemblyGCA
 import numpy as np
@@ -13,7 +17,6 @@ np.set_printoptions(precision=3, suppress=True)
 
 def setup_model_pullin(process):
     model = AssemblyGCA(drawn_dimensions_filename="../layouts/fawn_underwater.csv", process=process)
-    # model.gca.x0 = model.gca.x0_pullin()
     model.gca.terminate_simulation = model.gca.pulled_in
     return model
 

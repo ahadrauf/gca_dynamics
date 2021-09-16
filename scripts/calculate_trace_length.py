@@ -63,8 +63,8 @@ capacitances_alternative = [eps0*width*length/t_ox for length, width in zip(leng
 tot_capacitance = np.sum(capacitances) + np.sum(capacitances_alternative)
 
 print("High Voltage Traces")
-print(len(widths), len(lengths))
-print(len(widths_alternative), len(lengths_alternative))
+print(len(widths), len(lengths), np.sum(lengths))
+print(len(widths_alternative), len(lengths_alternative), np.sum(lengths_alternative))
 print(trajs)
 print(lengths, lengths_alternative)
 print(resistances, np.sum(resistances), '-->', tot_resistance)
@@ -103,3 +103,59 @@ print(len(widths), len(lengths))
 print(trajs)
 print(lengths)
 print(resistances, np.sum(resistances))
+
+
+
+###################################### Pull-in/Release Traces ##################################
+print("Pull-in/Release Traces")
+# Widths = the longest path
+# Widths_alternative = the shorter split between the two sides of a GCA finger array (only for HV traces)
+widths = 1e-6*np.array([30., 50.])
+widths_alternative = 1e-6*np.array([30., 50.])
+
+trajs = ["""-9043.87700	-135.99500
+            -9853.03200	-135.99500
+            -9853.03200	497.64300
+            -9506.12400	497.64300
+            -9506.12400	380.29000""",
+         """-9547.65000 355.29000
+            -8759.71600 355.29000"""]
+trajs_alternative = ["""-8980.24400	98.71100
+                        -8980.24400	-79.66600""",
+                     """-9547.65000 92.34600
+                        -8759.71600 92.34600"""]
+alternative_split = 0  # the index to split the trajs array by
+
+lengths = []
+lengths_alternative = []
+for traj in trajs:
+    traj = traj.split()
+    traj = [np.array([float(traj[2*i]), float(traj[2*i + 1])]) for i in range(len(traj)//2)]
+    dist = [np.linalg.norm(traj[i] - traj[i + 1]) for i in range(len(traj) - 1)]
+    length = np.sum(dist)
+    lengths.append(length*1e-6)
+for traj in trajs_alternative:
+    traj = traj.split()
+    traj = [np.array([float(traj[2*i]), float(traj[2*i + 1])]) for i in range(len(traj)//2)]
+    dist = [np.linalg.norm(traj[i] - traj[i + 1]) for i in range(len(traj) - 1)]
+    length = np.sum(dist)
+    lengths_alternative.append(length*1e-6)
+
+resistivity = 0.1  # Ohm-m
+t_SOI = 40e-6
+resistances = [resistivity*length/width/t_SOI for length, width in zip(lengths, widths)]
+resistances_alternative = [resistivity*length/width for length, width in zip(lengths_alternative, widths_alternative)]
+tot_resistance = np.sum(resistances[:alternative_split]) + 1./(1./np.sum(resistances[alternative_split:]) + 1./np.sum(resistances_alternative))
+
+eps0 = 8.85e-12
+t_ox = 2e-6
+capacitances = [eps0*width*length/t_ox for length, width in zip(lengths, widths)]
+capacitances_alternative = [eps0*width*length/t_ox for length, width in zip(lengths_alternative, widths_alternative)]
+tot_capacitance = np.sum(capacitances) + np.sum(capacitances_alternative)
+
+print(len(widths), len(lengths), np.sum(lengths))
+print(len(widths_alternative), len(lengths_alternative), np.sum(lengths_alternative))
+print(trajs)
+print(lengths, lengths_alternative)
+print(resistances, np.sum(resistances), '-->', tot_resistance)
+print(capacitances, np.sum(capacitances), '-->', tot_capacitance)
