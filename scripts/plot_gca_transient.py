@@ -3,6 +3,8 @@ import numpy as np
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
 from process import *
+from datetime import datetime
+plt.rc('font', size=12)
 
 
 def setup_model_pullin():
@@ -15,18 +17,11 @@ def setup_model_pullin():
 def setup_model_release(**kwargs):
     u = [kwargs["V"], kwargs["Fext"]]
     model = AssemblyGCA(drawn_dimensions_filename="../layouts/fawn.csv", process=SOI())
-    # model.gca.fingerL = 15.6e-6
-    # model.gca.update_dependent_variables()
     if "Fescon" in kwargs:
         model.gca.Fescon = kwargs["Fescon"]
     if "Fkcon" in kwargs:
         model.gca.Fkcon = kwargs["Fkcon"]
     model.gca.x0 = model.gca.x0_release(u)
-    # model.gca.x0 = [4.630000e-6, -0.349416] #model.gca.x0_release(u)
-    print("x0 = ", model.gca.x0, "ours:", model.gca.x0_release(u))
-    print("k_support = ", model.gca.k_support)
-    print("mass = ", model.gca.m_total, model.gca.mainspineA*model.gca.process.t_SOI*model.gca.process.density)
-    print("Lol =", model.gca.fingerL)
     model.gca.terminate_simulation = model.gca.released
     return model
 
@@ -100,29 +95,67 @@ def plot_solution(sol, t_sim, model, plt_title=None):
 
 
 if __name__ == "__main__":
+    now = datetime.now()
+    name_clarifier = "_plot_gca_transient"
+    timestamp = now.strftime("%Y%m%d_%H_%M_%S") + name_clarifier
+    print(timestamp)
+
     V = 60
-    # Fext = 50e-6
     Fext = 0.
-    # model = setup_model_pullin()
-    # u = setup_inputs(V=V, Fext=0.)  # Change V=V for pullin, V=0 for release
-    model = setup_model_release(V=V, Fext=Fext)  # Change for pullin/release
-    # model.gca.gf = 2e-6 + 2*model.gca.process.undercut  # 4.83e-6 + 2*model.gca.process.undercut
-    # model.gca.x_GCA = model.gca.gf - 1e-6
-    # model.gca.fingerW = 3.425e-6 - 2*model.gca.process.undercut  # 5.005e-6 + 2*model.gca.process.undercut
-    # model.gca.fingerW = 3.5e-6 - 2*model.gca.process.undercut
-    # model.gca.update_dependent_variables()
-    # model.gca.x0 = model.gca.x0_release([V, Fext])
-    # print("x0 = ", model.gca.x0, "ours:", model.gca.x0_release([V, Fext]))
-    u = setup_inputs(V=0, Fext=Fext)  # Change V=V for pullin, V=0 for release
-
+    model = setup_model_pullin()
+    u = setup_inputs(V=V, Fext=0.)  # Change V=V for pullin, V=0 for release
     t_span = [0, 300e-6]
-    sol = sim_gca(model, u, t_span)
-    print('End time:', sol.t_events[0]*1e6)
+    sol_pullin = sim_gca(model, u, t_span)
+    print('End time:', sol_pullin.t_events[0]*1e6)
+    t_sim_pullin = np.linspace(t_span[0], sol_pullin.t_events[0], 30)
+    t_sim_pullin = np.ndarray.flatten(t_sim_pullin)
 
-    print(model.gca.m_total)
-    print(model.gca.supportW*model.gca.supportL*model.gca.process.t_SOI*model.gca.process.density)
+    model = setup_model_release(V=V, Fext=Fext)  # Change for pullin/release
+    model.gca.x0 = model.gca.x0_release([V, Fext])
+    u = setup_inputs(V=0, Fext=Fext)  # Change V=V for pullin, V=0 for release
+    t_span = [0, 300e-6]
+    sol_release = sim_gca(model, u, t_span)
+    print('End time:', sol_release.t_events[0]*1e6)
+    t_sim_release = np.linspace(t_span[0], sol_release.t_events[0], 30)
+    t_sim_release = np.ndarray.flatten(t_sim_release)
 
-    t_sim = np.linspace(t_span[0], sol.t_events[0], 30)
-    t_sim = np.ndarray.flatten(t_sim)
-    title = "GCA Simulation, x0 = {}, V = {}".format(model.x0(), V)
-    plot_solution(sol, t_sim, model, plt_title=title)
+    t_sim = np.append(t_sim_pullin, t_sim_release + max(t_sim_pullin))
+    x = np.append(sol_pullin.sol(t_sim_pullin)[0, :], sol_release.sol(t_sim_release)[0, :])
+    v = np.append(sol_pullin.sol(t_sim_pullin)[1, :], sol_release.sol(t_sim_release)[1, :])
+    offset = 30e-6
+
+    title = "GCA Simulation, V = {}".format(V)
+    fig = plt.figure()
+
+    ax1 = plt.subplot(111)
+    line1, = plt.plot(t_sim_pullin*1e6, sol_pullin.sol(t_sim_pullin)[0, :]*1e6, 'b-', label="x")
+    plt.plot((t_sim_release + offset)*1e6, sol_release.sol(t_sim_release)[0, :]*1e6, 'b-', label='_nolegend_')
+    plt.xlabel('t (us)')
+    plt.ylabel('x (um)')
+    # plt.legend()
+
+    ax1_right = fig.add_subplot(111, sharex=ax1, frameon=False)
+    line2, = ax1_right.plot(t_sim_pullin*1e6, sol_pullin.sol(t_sim_pullin)[1, :], 'r-', label="dx/dt")
+    ax1_right.plot((t_sim_release + offset)*1e6, sol_release.sol(t_sim_release)[1, :], 'r-', label='_nolegend_')
+    ax1_right.yaxis.tick_right()
+    ax1_right.yaxis.set_label_position("right")
+    plt.ylabel("dx/dt (m/s)")
+    ax1_right.yaxis.label.set_color('red')
+    ax1_right.tick_params(axis='y', colors='red')
+
+    ax1.axvline(max(t_sim_pullin)*1e6, color='k', linestyle='--')
+    ax1.axvline(offset*1e6, color='k', linestyle='--')
+    plt.title(title)
+    plt.legend([line1, line2], [line1.get_label(), line2.get_label()], loc='center right')
+
+    ax1.annotate("Pull-in", xy=(0.04, 0.96), xycoords='axes fraction', color='k',
+                 xytext=(0, 0), textcoords='offset points', ha='left', va='top')
+
+    ax1.annotate("Release", xy=(0.96, 0.96), xycoords='axes fraction', color='k',
+                 xytext=(0, 0), textcoords='offset points', ha='right', va='top')
+    # plt.legend(handles=[line1, line2])
+    plt.tight_layout()
+    plt.show()
+    # plt.savefig("../figures/" + timestamp + ".png")
+    # plt.savefig("../figures/" + timestamp + ".pdf")
+    # plot_solution(sol, t_sim, model, plt_title=title)

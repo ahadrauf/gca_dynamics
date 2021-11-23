@@ -8,6 +8,7 @@ from scipy.io import loadmat, savemat
 from datetime import datetime
 from sklearn.metrics import r2_score, mean_squared_error
 import time
+plt.rc('font', size=11)
 
 
 def setup_model_pullin():
@@ -55,8 +56,8 @@ def setup_inputs_RC_pullin(**kwargs):
     print("RC", RC)
     V = kwargs["V"]
     Fext = kwargs["Fext"]
-    # return lambda t, x: np.array([V*(1-np.exp(-t/RC)), Fext])
-    return lambda t, x: np.array([V, Fext])  # simulate infinite RC constants
+    return lambda t, x: np.array([V*(1-np.exp(-t/RC)), Fext])
+    # return lambda t, x: np.array([V, Fext])  # simulate infinite RC constants
 
 
 def setup_inputs_RC_release(**kwargs):
@@ -67,8 +68,8 @@ def setup_inputs_RC_release(**kwargs):
     RC = R*C
     V = kwargs["V"]
     Fext = kwargs["Fext"]
-    # return lambda t, x: np.array([V*np.exp(-t/RC), Fext])
-    return lambda t, x: np.array([0, Fext])  # simulate infinite RC constants
+    return lambda t, x: np.array([V*np.exp(-t/RC), Fext])
+    # return lambda t, x: np.array([0, Fext])  # simulate infinite RC constants
 
 
 def sim_gca(model, u, t_span, verbose=False):
@@ -101,10 +102,10 @@ def plot_data(fig, axs, frequency, velocity_avg, velocity_std, velocity_fitted, 
             ax.errorbar(frequency[i], velocity_avg[i], velocity_std[i], fmt='b.', capsize=3, zorder=1)
             ax.plot(frequency[i], velocity_fitted[i], color='r', linewidth=2,
                     zorder=2)  # plot the line above the errorbar
-            ax.annotate(V_labels[i], xy=(0.035, 0.98), xycoords='axes fraction', fontsize=10,
+            ax.annotate(V_labels[i], xy=(0.035, 0.98), xycoords='axes fraction', fontsize=11,
                         xytext=(-2, -2), textcoords='offset points',
                         ha='left', va='top')
-            ax.annotate(line_labels[i], xy=(0.035, 0.75), xycoords='axes fraction', fontsize=10,
+            ax.annotate(line_labels[i], xy=(0.035, 0.8), xycoords='axes fraction', fontsize=11,
                         xytext=(-2, -2), textcoords='offset points',
                         ha='left', va='top', color='red')
 
@@ -201,9 +202,10 @@ if __name__ == "__main__":
 
         label = r"$f_{ideal,max}$ = " + "\n{:.1f} kHz".format(f_max/1e3)
         x_frac = f_max/40e3
-        axs[i//ny][i%ny].annotate(label, xy=(x_frac+0.06, 0.05), xycoords='axes fraction', fontsize=10,
+        axs[i//ny][i%ny].annotate(label, xy=(x_frac+0.03, 0.05), xycoords='axes fraction', fontsize=11,
                                   xytext=(-2, -2), textcoords='offset points',
                                   ha='left', va='bottom')
+        axs[i//ny][i%ny].set_yticks(np.arange(0, np.max(velocity_avg[i]) + 0.1, 0.1))
 
     # add a big axis, hide frame
     fig.add_subplot(111, frameon=False)

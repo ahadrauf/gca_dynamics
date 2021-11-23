@@ -4,8 +4,10 @@ Defines a laterally oriented electrostatic gap closing actuator (GCA)
 
 from process import SOI
 import numpy as np
-from scipy.integrate import quad
+from scipy.integrate import quad, solve_bvp
 import csv
+import time
+from timeit import default_timer as timer
 
 
 class GCA:
@@ -163,10 +165,128 @@ class GCA:
         return self.Fbcon*b*xdot, self.Fbcon*bsf*xdot, self.Fbcon*bcf*xdot
 
     def Fes_calc1(self, x, V):
-        return self.Nfing*0.5*V**2*self.process.eps0*self.process.t_SOI*self.fingerL*(
-                1/(self.gf - x)**2 - 1/(self.gb + x)**2)*self.Fescon
+        I_fing = (self.fingerW**3)*self.process.t_SOI/12
+        Estar = self.process.E/(1 - self.process.v**2)
+        Fes_parallelplate = self.Nfing*0.5*V**2*self.process.eps0*self.process.t_SOI*self.fingerL*(
+                1/(self.gf - x)**2 - 1/(self.gb + x)**2)
+        wpp = Fes_parallelplate/self.fingerL_total
+        y_pp = lambda xi: wpp/(24*self.process.E*I_fing)*(
+                xi**4 - 4*self.fingerL_total*xi**3 + 6*self.fingerL_total**2*xi**2)
+        dy_pp = lambda xi: wpp/(24*self.process.E*I_fing)*(
+                4*xi**3 - 12*self.fingerL_total*xi**2 + 12*self.fingerL_total**2*xi)
+        ddy_pp = lambda xi: wpp/(24*self.process.E*I_fing)*(
+                12*xi**2 - 24*self.fingerL_total*xi + 12*self.fingerL_total**2)
+        E2_pp = 0.5*Estar*I_fing*(quad(lambda xi: (ddy_pp(xi)/(1 + dy_pp(xi)**2)**1.5)**2, 0, self.fingerL_total)[0])
+        return self.Fescon*Fes_parallelplate, [y_pp(xi) for xi in np.linspace(0, 1, 11)], E2_pp
 
     def Fes_calc2(self, x, V):
+        """
+        Modified electrostatic force calculation factoring in finger bending and fringe fields
+        Derivation modified from:
+        [1] D. Elata and V. Leus, “How slender can comb-drive fingers be?,” J. Micromech.
+        Microeng., vol. 15, no. 5, pp. 1055–1059, May 2005, doi: 10.1088/0960-1317/15/5/023.
+        [2] V. Leus, D. Elata, V. Leus, and D. Elata, “Fringing field effect in electrostatic actuators,” 2004.
+
+        :param x: GCA state
+        :param V: Input voltage
+        :return: (Output force, an array (size 11,) of the finger deflection at evenly spaced intervals)
+        """
+        start_time = timer()
+        Estar = self.process.E/(1 - self.process.v**2)
+        a = self.fingerL_buffer/self.fingerL_total
+        gf, gb = self.gf - x, self.gb + x
+        if gf < 0:
+            print("gf < 0", gf, self.gf, x)
+            # gf = 1e-12
+            # gb = self.gb + self.gf
+        beta = gb/gf
+        Vtilde = V*np.sqrt(6*self.process.eps0*self.fingerL_total**4/(Estar*self.fingerW**3*gf**3))*np.sqrt(self.Fescon)
+        l = np.power(Vtilde**2*(2/beta**3 + 2), 0.25)
+        b2, b3, c0, c1, c2, c3 = self.Fes_calc2_helper(x, V)
+
+        # y = lambda xi: (xi < a) * (gf * (b2 * xi**2 + b3 * xi**3)) + \
+        #                (xi >= a) * (gf * (c0 * np.exp(-l * xi) + c1 * np.exp(l * xi) + c2 *
+        #                                        np.sin(l * xi) + c3 * np.cos(l * xi) - b[0]))
+        y = lambda xi_tilde: (gf*(c0*np.exp(-l*xi_tilde) + c1*np.exp(l*xi_tilde) + c2*np.sin(l*xi_tilde) +
+                                  c3*np.cos(l*xi_tilde) - (beta**3 - beta)/(2*beta**3 + 2)))  # We only integrate over xi >= a
+
+        # dF_dx = lambda xi: self.Fescon*self.Nfing*0.5*V**2*self.process.eps0*self.process.t_SOI* \
+        #                    (1/(gf - y(xi/self.fingerL_total) - y(self.fingerL_total*(1+a)-xi))**2 -
+        #                     1/(gb + y(xi/self.fingerL_total) + y(self.fingerL_total*(1+a)-xi))**2)
+
+        dF_dx = lambda xi: self.Fescon*self.Nfing*0.5*V**2*self.process.eps0*self.process.t_SOI* \
+                           (1/(gf - y(xi/self.fingerL_total))**2 -
+                            1/(gb + y(xi/self.fingerL_total))**2)
+
+        Fes = quad(dF_dx, a*self.fingerL_total, self.fingerL_total)[0]
+        end_time = timer()
+        # print("Runtime for Fes_calc2, V =", V, "=", (end_time - start_time)*1e6, 'us --> ', Fes, y(1))
+
+        I_fing = (self.fingerW**3)*self.process.t_SOI/12
+        # m_fing = self.fingerW*self.fingerL_total*self.process.t_SOI*self.process.density
+        # x_fing = y(1.0)
+        # w1 = (1.875**2)*np.sqrt(self.process.E*I_fing/(m_fing*(self.fingerL_total**3)))
+        # v_fing = w1*x_fing/2
+        # E_orig = 0.5*m_fing*v_fing**2
+
+        b2m, b3m = b2/self.fingerL_total**2, b3/self.fingerL_total**3
+        lm = l/self.fingerL_total
+        dy1 = lambda xi: gf*(2*b2m*xi + 3*b3m*xi**2)
+        dy2 = lambda xi: gf*(c0*-lm*np.exp(-lm*xi) + c1*lm*np.exp(lm*xi) + c2*lm*np.cos(lm*xi) +
+                             c3*lm*-np.sin(lm*xi))
+        ddy1 = lambda xi: gf*(2*b2m + 6*b3m*xi)
+        ddy2 = lambda xi: gf*(c0*lm**2*np.exp(-lm*xi) + c1*lm**2*np.exp(lm*xi) + c2*lm**2*-np.sin(lm*xi) +
+                              c3*lm**2*-np.cos(lm*xi))
+
+        # E1 = 0.5*Estar*I_fing*(quad(lambda xi: ddy1(xi)**2, 0, self.fingerL_buffer)[0] +
+        #                        quad(lambda xi: ddy2(xi)**2, self.fingerL_buffer, self.fingerL_total)[0])
+
+        E2 = 0.5*Estar*I_fing*(quad(lambda xi: (ddy1(xi)/(1 + dy1(xi)**2)**1.5)**2, 0, self.fingerL_buffer)[0] +
+                               quad(lambda xi: (ddy2(xi)/(1 + dy2(xi)**2)**1.5)**2, self.fingerL_buffer,
+                                    self.fingerL_total)[0])
+
+        # print("Comparing energy stored in comb fingers: E_orig={}, E_calc1={}, E_calc2={}".format(E_orig, E1, E2))
+
+        # calculate fringing field
+        # Source: [1]V. Leus, D. Elata, V. Leus, and D. Elata, “Fringing field effect in electrostatic actuators,” 2004.
+        h = gf
+        t = self.fingerL
+        w = self.process.t_SOI
+        Fescon = 1 + h/np.pi/w*(1 + t/np.sqrt(t*h + t**2))  # F = 1/2*V^2*dC/dx (C taken from Eq. 10)
+        # Fescon = 1.
+        # print("Fescon", Fescon)
+        # return Fescon*Fes, [y(xi) for xi in np.arange(0, 1.1, 0.1)], E2
+        return Fescon*Fes, [y(xi) for xi in np.linspace(0, 1, 11)], E2
+
+    def Fes_calc2_helper(self, x, V):
+        Estar = self.process.E/(1 - self.process.v**2)
+        a = self.fingerL_buffer/self.fingerL_total
+        gf, gb = self.gf - x, self.gb + x
+        if gf < 0:
+            print("gf < 0", gf, self.gf, x)
+            # gf = 1e-12
+            # gb = self.gb + self.gf
+        beta = gb/gf
+        Vtilde = V*np.sqrt(6*self.process.eps0*self.fingerL_total**4/(Estar*self.fingerW**3*gf**3))*np.sqrt(self.Fescon)
+        l = np.power(Vtilde**2*(2/beta**3 + 2), 0.25)
+
+        try:
+            A = np.array([[-a**2, -a**3, np.exp(-l*a), np.exp(l*a), np.sin(l*a), np.cos(l*a)],
+                          [-2*a, -3*a**2, -l*np.exp(-l*a), l*np.exp(l*a), l*np.cos(l*a),
+                           -l*np.sin(l*a)],
+                          [-2, -6*a, l**2*np.exp(-l*a), l**2*np.exp(l*a), -l**2*np.sin(l*a),
+                           -l**2*np.cos(l*a)],
+                          [0, -6, -l**3*np.exp(-l*a), l**3*np.exp(l*a), -l**3*np.cos(l*a),
+                           l**3*np.sin(l*a)],
+                          [0, 0, l**2*np.exp(-l), l**2*np.exp(l), -l**2*np.sin(l), -l**2*np.cos(l)],
+                          [0, 0, -l**3*np.exp(-l), l**3*np.exp(l), -l**3*np.cos(l), l**3*np.sin(l)]])
+            b = np.array([(beta**3 - beta)/(2*beta**3 + 2), 0, 0, 0, 0, 0])
+            b2, b3, c0, c1, c2, c3 = np.linalg.solve(A, b)  # np.linalg.pinv(A).dot(b)
+            return b2, b3, c0, c1, c2, c3
+        except Exception as e:
+            print("Exception occured:", a, gf, gb, beta, Vtilde, l)
+
+    def Fes_calc3(self, x, V):
         """
         Modified electrostatic force calculation factoring in finger bending and fringe fields
         Derivation modified from:
@@ -211,7 +331,12 @@ class GCA:
                                   np.sin(l*xi_tilde) + c3*np.cos(l*xi_tilde) - b[0]))  # We only integrate over xi >= a
 
         dF_dx = lambda xi: self.Fescon*self.Nfing*0.5*V**2*self.process.eps0*self.process.t_SOI* \
-                           (1/(gf - y(xi/self.fingerL_total))**2 - 1/(gb + y(xi/self.fingerL_total))**2)
+                           (1/(gf - y(xi/self.fingerL_total) - y((1 + a) - xi/self.fingerL_total))**2 -
+                            1/(gb + y(xi/self.fingerL_total) + y((1 + a) - xi/self.fingerL_total))**2)
+
+        # dF_dx = lambda xi: self.Fescon*self.Nfing*0.5*V**2*self.process.eps0*self.process.t_SOI* \
+        #                    (1/(gf - y(xi/self.fingerL_total))**2 -
+        #                     1/(gb + y(xi/self.fingerL_total))**2)
 
         Fes = quad(dF_dx, a*self.fingerL_total, self.fingerL_total)[0]
 
@@ -249,6 +374,86 @@ class GCA:
         # Fescon = 1.
         # print("Fescon", Fescon)
         return Fescon*Fes, [y(xi) for xi in np.arange(0, 1.1, 0.1)], E2
+
+    def Fes_calc4(self, x, V):
+        """
+        Modified electrostatic force calculation factoring in finger bending and fringe fields
+        Derivation modified from:
+        [1] D. Elata and V. Leus, “How slender can comb-drive fingers be?,” J. Micromech.
+        Microeng., vol. 15, no. 5, pp. 1055–1059, May 2005, doi: 10.1088/0960-1317/15/5/023.
+        [2] V. Leus, D. Elata, V. Leus, and D. Elata, “Fringing field effect in electrostatic actuators,” 2004.
+
+        :param x: GCA state
+        :param V: Input voltage
+        :return: (Output force, an array (size 11,) of the finger deflection at evenly spaced intervals)
+        """
+        start_time = timer()
+        Estar = self.process.E/(1 - self.process.v**2)
+        I_fing = (self.fingerW**3)*self.process.t_SOI/12
+        a = self.fingerL_buffer/self.fingerL_total
+        gf, gb = self.gf - x, self.gb + x
+        if gf < 0:
+            print("gf < 0", gf, self.gf, x)
+        beta = gb/gf
+        Vtilde = V*np.sqrt(6*self.process.eps0*self.fingerL_total**4/(Estar*self.fingerW**3*gf**3))*np.sqrt(self.Fescon)
+        l = np.power(Vtilde**2*(2/beta**3 + 2), 0.25)
+
+        def dy_dxi(xi, state):
+            y, dy, ddy, dddy = state
+            ddddy = Vtilde**2*(xi >= a)*(np.divide(1., np.square(1 - y)) - np.divide(1., np.square(beta + y)))
+            ret = np.vstack((dy, ddy, dddy, ddddy))
+            return ret
+
+        def bc(ya, yb):
+            return np.array([ya[0], ya[1], yb[2], yb[3]])  # yb[0] - y0[0, len(xi_range) - 1]])  #
+
+        # xi = np.linspace(0., self.fingerL_total, 11)
+        xi_range = np.linspace(0., 1., 1001)
+        b2, b3, c0, c1, c2, c3 = self.Fes_calc2_helper(x, V)
+
+        y = lambda xi: (xi < a)*(b2*xi**2 + b3*xi**3) + (xi >= a)*(c0*np.exp(-l*xi) + c1*np.exp(l*xi) +
+                                                                   c2*np.sin(l*xi) + c3*np.cos(l*xi) -
+                                                                   (beta**3 - beta)/(2*beta**3 + 2))
+        dy = lambda xi: (xi < a)*(2*b2*xi + 3*b3*xi**2) + (xi >= a)*(c0*-l*np.exp(-l*xi) + c1*l*np.exp(l*xi) +
+                                                                     c2*l*np.cos(l*xi) + c3*-l*np.sin(l*xi))
+        ddy = lambda xi: (xi < a)*(2*b2 + 6*b3*xi) + (xi >= a)*(c0*l**2*np.exp(-l*xi) + c1*l**2*np.exp(l*xi) +
+                                                                c2*-l**2*np.sin(l*xi) + c3*-l**2*np.cos(l*xi))
+        dddy = lambda xi: (xi < a)*(6*b3) + (xi >= a)*(c0*-l**3*np.exp(-l*xi) + c1*l**3*np.exp(l*xi) +
+                                                       c2*-l**3*np.cos(l*xi) + c3*l**3*np.sin(l*xi))
+        y0 = np.zeros((4, np.size(xi_range)))
+        for i in range(len(xi_range)):
+            xi = xi_range[i]
+            y0[0, i] = y(xi)
+            y0[1, i] = dy(xi)
+            y0[2, i] = ddy(xi)
+            y0[3, i] = dddy(xi)
+        # y0[0, len(xi_range) - 1] -= 0.1
+
+        # y0 = np.zeros((4, xi.size))
+        # print(xi_range)
+        # print(y0)
+
+        sol = solve_bvp(dy_dxi, bc, xi_range, y0, verbose=0, tol=0.0001)
+
+        y = lambda xi: gf*sol.sol(xi/self.fingerL_total)[0]
+
+        dF_dx = lambda xi: self.Fescon*self.Nfing*0.5*V**2*self.process.eps0*self.process.t_SOI* \
+                           (1/(gf - y(xi))**2 - 1/(gb + y(xi))**2)
+        Fes = quad(dF_dx, a*self.fingerL_total, self.fingerL_total)[0]
+        end_time = timer()
+        # print("Runtime for Fes_calc4, V =", V, "=", (end_time - start_time))
+        # print("Runtime for Fes_calc4, V =", V, "=", (end_time - start_time)*1e6, 'us --> ', Fes, y(self.fingerL_total))
+
+        # calculate fringing field
+        # Source: [1]V. Leus, D. Elata, V. Leus, and D. Elata, “Fringing field effect in electrostatic actuators,” 2004.
+        h = gf
+        t = self.fingerL
+        w = self.process.t_SOI
+        Fescon = 1 + h/np.pi/w*(1 + t/np.sqrt(t*h + t**2))  # F = 1/2*V^2*dC/dx (C taken from Eq. 10)
+        # Fescon = 1.
+        # print("Fescon", Fescon)
+        # return Fescon*Fes, sol, None
+        return Fescon*Fes, [y(xi) for xi in np.linspace(0, self.fingerL_total, 11)], None
 
     def pulled_in(self, t, x):
         """
@@ -288,19 +493,38 @@ class GCA:
         V, Fext = self.unzip_input(u)
         x = np.array([self.x_GCA, 0])
         # Fes = self.Fes(x, u)/self.Nfing  # Fes for one finger!
-        Fes, y, Ues = self.Fes_calc2(x[0], V)
+        # Fes, y, Ues = self.Fes_calc2(x[0], V)
+        Fes, y, Ues = self.Fes_calc1(x[0], V)
         Fes = Fes/self.Nfing
 
         # Finger release dynamics
         I_fing = (self.fingerW**3)*self.process.t_SOI/12
+        Estar = self.process.E/(1 - self.process.v**2)
         k_fing = 8*self.process.E*I_fing/(self.fingerL_total**3)
         m_fing = self.fingerW*self.fingerL_total*self.process.t_SOI*self.process.density
         x_fing_orig = Fes/k_fing
-        x_fing = y[-1]
-        w1 = (1.875**2)*np.sqrt(self.process.E*I_fing/(m_fing*(self.fingerL_total**3)))
-        # m_fing_2 = k_fing/w1**2
-        m_fing_2 = Fes/x_fing/w1**2
-        v_fing = w1*x_fing/2
+        # Fes_parallelplate = self.Fes_calc1(x[0], V)/self.Nfing
+        # x_fing_orig_parallelplate = Fes_parallelplate/k_fing
+        # x_fing = y[-1]
+        # w1 = (1.875**2)*np.sqrt(self.process.E*I_fing/(m_fing*(self.fingerL_total**3)))
+        # # m_fing_2 = k_fing/w1**2
+        # m_fing_2 = Fes/x_fing/w1**2
+        # v_fing = w1*x_fing/2
+        # U_fing_parallelplate = 0.5*k_fing*x_fing_orig_parallelplate**2
+
+        # wpp = Fes_parallelplate/self.fingerL_total
+        # y_pp = lambda xi: wpp/(24*self.process.E*I_fing)*(
+        #         xi**4 - 4*self.fingerL_total*xi**3 + 6*self.fingerL_total**2*xi**2)
+        # dy_pp = lambda xi: wpp/(24*self.process.E*I_fing)*(
+        #         4*xi**3 - 12*self.fingerL_total*xi**2 + 12*self.fingerL_total**2*xi)
+        # ddy_pp = lambda xi: wpp/(24*self.process.E*I_fing)*(
+        #         12*xi**2 - 24*self.fingerL_total*xi + 12*self.fingerL_total**2)
+        # E2_pp = 0.5*Estar*I_fing*(quad(lambda xi: (ddy_pp(xi)/(1 + dy_pp(xi)**2)**1.5)**2, 0, self.fingerL_total)[0])
+        #
+        # print("Fes versions:", Fes, Fes_parallelplate)
+        # print("x_fing versions:", x_fing, x_fing_orig_parallelplate, y_pp(self.fingerL_total))
+        # print("k_eff versions:", Fes/x_fing, k_fing)
+        # print("U_fing", Ues, U_fing_parallelplate, 0.5*Fes_parallelplate**2/k_fing, E2_pp)
 
         # Spine axial spring compression
         k_spine = self.process.E*(self.process.t_SOI*self.spineW)/self.spineL
@@ -319,21 +543,27 @@ class GCA:
         # print("k_spine", k_spine, "k_fing", k_fing)
         m_tot = self.spineA*self.process.t_SOI*self.process.density
 
+        # Calculate Q factor
+        b = self.Fb((self.x_GCA, 1.), [0, 0])[0]/self.Nfing
+        k_fing_natural = 3*self.process.E*I_fing/(self.fingerL_total**3)
+        print("Q factor = sqrt(mk)/b, m={}, k={}, b={}".format(m_fing, k_fing_natural, b))
+        print("Q = ", np.sqrt(m_fing*k_fing_natural)/b)
+
         # Conservation of linear momentum
-        v0 = (self.Nfing*m_fing*v_fing + m_spine*v_spine + m_support*v_support)/(
-                self.Nfing*m_fing + m_spine + m_support)
-        v0_orig = (self.Nfing*m_fing*v_fing + m_spine*v_spine)/(self.Nfing*m_fing + m_spine)
-        v0_2 = (self.Nfing*m_fing_2*v_fing + m_spine*v_spine)/(self.Nfing*m_fing_2 + m_spine)
-        v0_3 = (self.Nfing*m_fing*v_fing + m_spine_v2*v_spine_v2)/(self.Nfing*m_fing + m_spine_v2)
-        v0_4 = (self.Nfing*m_fing_2*v_fing + m_spine_v2*v_spine_v2)/(self.Nfing*m_fing_2 + m_spine_v2)
-        v0_5 = np.sqrt((self.Nfing*m_fing*v_fing**2 + m_spine*v_spine**2)/(self.Nfing*m_fing + m_spine))
-        v0_6 = np.sqrt((self.Nfing*m_fing_2*v_fing**2 + m_spine*v_spine**2)/(self.Nfing*m_fing_2 + m_spine))
-        v0_7 = np.sqrt((self.Nfing*m_fing*v_fing**2 + m_spine_v2*v_spine_v2**2)/(self.Nfing*m_fing + m_spine_v2))
-        v0_8 = np.sqrt((self.Nfing*m_fing_2*v_fing**2 + m_spine_v2*v_spine_v2**2)/(self.Nfing*m_fing_2 + m_spine_v2))
-        v0_9 = np.sqrt((self.Nfing*m_fing*v_fing**2 + m_spine*v_spine**2 + m_support*v_support**2)/(
-                self.Nfing*m_fing + m_spine + m_support))
-        v0_10 = np.sqrt((self.Nfing*m_fing_2*v_fing**2 + m_spine*v_spine**2 + m_support*v_support**2)/(
-                self.Nfing*m_fing_2 + m_spine + m_support))
+        # v0 = (self.Nfing*m_fing*v_fing + m_spine*v_spine + m_support*v_support)/(
+        #         self.Nfing*m_fing + m_spine + m_support)
+        # v0_orig = (self.Nfing*m_fing*v_fing + m_spine*v_spine)/(self.Nfing*m_fing + m_spine)
+        # v0_2 = (self.Nfing*m_fing_2*v_fing + m_spine*v_spine)/(self.Nfing*m_fing_2 + m_spine)
+        # v0_3 = (self.Nfing*m_fing*v_fing + m_spine_v2*v_spine_v2)/(self.Nfing*m_fing + m_spine_v2)
+        # v0_4 = (self.Nfing*m_fing_2*v_fing + m_spine_v2*v_spine_v2)/(self.Nfing*m_fing_2 + m_spine_v2)
+        # v0_5 = np.sqrt((self.Nfing*m_fing*v_fing**2 + m_spine*v_spine**2)/(self.Nfing*m_fing + m_spine))
+        # v0_6 = np.sqrt((self.Nfing*m_fing_2*v_fing**2 + m_spine*v_spine**2)/(self.Nfing*m_fing_2 + m_spine))
+        # v0_7 = np.sqrt((self.Nfing*m_fing*v_fing**2 + m_spine_v2*v_spine_v2**2)/(self.Nfing*m_fing + m_spine_v2))
+        # v0_8 = np.sqrt((self.Nfing*m_fing_2*v_fing**2 + m_spine_v2*v_spine_v2**2)/(self.Nfing*m_fing_2 + m_spine_v2))
+        # v0_9 = np.sqrt((self.Nfing*m_fing*v_fing**2 + m_spine*v_spine**2 + m_support*v_support**2)/(
+        #         self.Nfing*m_fing + m_spine + m_support))
+        # v0_10 = np.sqrt((self.Nfing*m_fing_2*v_fing**2 + m_spine*v_spine**2 + m_support*v_support**2)/(
+        #         self.Nfing*m_fing_2 + m_spine + m_support))
         v0_11 = np.sqrt(2*(self.Nfing*Ues + U_spine)/self.m_total)
         v0_12 = np.sqrt(2*(self.Nfing*Ues + U_spine + U_support)/self.m_total)
 
@@ -346,9 +576,14 @@ class GCA:
         # print('Release values (Fes, v_fing, v_spine, v0):', Fes, v_fing, v_spine, v0)
         # print("mf0 mfeff mshut mshutv2 Amainspine Ashut", m_fing, m_fing_2, m_spine, m_spine_v2, self.mainspineA,
         #       self.spineW*self.spineL)
-        # print("Masses m_fing, m_spine, m_support, m_fing+m_spine+m_support, m_tot, m_total", self.Nfing*m_fing, m_spine,
-        #       m_support, self.Nfing*m_fing + m_spine + m_support, m_tot, self.m_total)
-        # print("Energies U_es U_spine U_support", self.Nfing*Ues, U_spine, U_support)
+        print("Masses m_fing, m_spine, m_support, m_fing+m_spine+m_support, m_tot, m_total", self.Nfing*m_fing, m_spine,
+              m_support, self.Nfing*m_fing + m_spine + m_support, m_tot, self.m_total)
+        print("Electrostatic Force Ifing Fes/0.5E_starI_fing", self.Nfing*Fes, I_fing, self.Nfing*Fes/0.5/Estar/I_fing)
+        # print("Energies U_es U_spine U_support", self.Nfing*Ues, U_spine, U_support, self.Nfing*E2_pp)
+        # print("Original Finger Energy", self.Nfing*U_fing_parallelplate)
+        print("Deformation of Finger", max(y))
+        print("Deformation of Spine", x_spine)
+        print("Predicted velocity", np.sqrt(Ues/(0.5*m_fing)), v0_11)
         # print("If omega kf F x_orig x varr vshut vsupport", I_fing, w1, k_fing, Fes, x_fing_orig, x_fing, v_fing,
         #       v_spine, v_support)
         # print("Release values (L, k, V, x0, v0_orig)", self.fingerL, self.k_support, V, self.x_GCA, v0_orig,
