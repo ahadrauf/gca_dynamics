@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 .idea/
 .vscode/
+*.xlsx
 
 # C extensions
 *.so
