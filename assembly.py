@@ -1,3 +1,9 @@
+"""
+Defines an Assembly object. An Assembly is meant to be a collection of one or several different components, collected
+together for easy simulation and coupling. The output of one component can easily by piped into the input of another
+component, helping to faciliate coupled motion (for example, coupling two GCA's with an inchworm motor shuttle).
+"""
+
 import numpy as np
 from gca import GCA
 from process import SOI

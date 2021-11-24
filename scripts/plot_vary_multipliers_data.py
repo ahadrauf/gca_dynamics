@@ -1,14 +1,17 @@
-import sys
-sys.path.append(r"C:\Users\ahadrauf\Desktop\Research\Pister\gca_dynamics")
+"""
+Plot v1 of Fig. 4's parameter sweep, which varies over Fes, Fb, Fk, and m_GCA
+"""
 
-from assembly import AssemblyGCA
+import os
+file_location = os.path.abspath(os.path.dirname( __file__))
+dir_location = os.path.abspath(os.path.join(file_location, '..'))
+import sys
+sys.path.append(file_location)
+sys.path.append(dir_location)
+
 import numpy as np
-from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
-from scipy.io import loadmat, savemat
 from datetime import datetime
-from process import *
-import time
 
 
 def setup_plot(len_x, len_y, plt_title=None, x_label="", y_label=""):

@@ -1,3 +1,7 @@
+"""
+A helper file so I could test the optimal undercut values under various error metrics
+"""
+
 import numpy as np
 from scipy.io import loadmat
 from sklearn.metrics import r2_score, mean_squared_error

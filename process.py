@@ -1,3 +1,8 @@
+"""
+Defines the manufacturing processes by which we created our layouts. These parameters are specific to our testing setup
+and manufacturing facilities. All of our chips were fabricated in the Marvell Nanofabrication Laboratory at UC Berkeley.
+"""
+
 class SOI:
     def __init__(self):
         self.undercut = 0.4e-6  # process undercut (m)

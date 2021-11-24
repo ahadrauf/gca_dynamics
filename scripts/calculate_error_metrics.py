@@ -1,3 +1,14 @@
+"""
+Calculate error metrics for the fit between pullin/release data and the simulated fit
+"""
+
+import os
+file_location = os.path.abspath(os.path.dirname( __file__))
+dir_location = os.path.abspath(os.path.join(file_location, '..'))
+import sys
+sys.path.append(file_location)
+sys.path.append(dir_location)
+
 import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime

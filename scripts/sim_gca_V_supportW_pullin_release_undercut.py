@@ -1,3 +1,16 @@
+"""
+One of the core files from the paper, which generated Fig. 9. Simulates the effect of varying support spring width and
+voltage on the pull-in and release times, and varies the undercut to minimize the error squared between the simulation
+and data.
+"""
+
+import os
+file_location = os.path.abspath(os.path.dirname( __file__))
+dir_location = os.path.abspath(os.path.join(file_location, '..'))
+import sys
+sys.path.append(file_location)
+sys.path.append(dir_location)
+
 from assembly import AssemblyGCA
 from process import *
 import numpy as np

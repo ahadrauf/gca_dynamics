@@ -1,11 +1,12 @@
+"""
+Graphically visualize how the fingers bend using different electrostatic force metrics
+"""
 from assembly import AssemblyGCA
 from process import SOI
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.io import loadmat, savemat
-from sklearn.metrics import r2_score
 from datetime import datetime
-np.set_printoptions(precision=3, suppress=True)
 plt.rc('font', size=11)
 
 
@@ -29,22 +30,10 @@ if __name__ == '__main__':
     print(Fes_fingerbending)
     print(y)
     plt.plot(np.linspace(0, 1, np.size(y)), y)
-    # print(sol.sol(0.))
-    # print(sol.sol(model.gca.fingerL_total))
-    # print(sol.sol([0., model.gca.fingerL_total])[0])
-    # print(sol.x)
-    # print(sol.y)
-    # print(sol.rms_residuals)
-    # print(sol.success)
+
     Fes_fingerbending, y, _ = model.gca.Fes_calc4(x, V)
     print(Fes_fingerbending)
     print(y)
     plt.plot(np.linspace(0, 1, np.size(y)), y)
-    # plt.plot(sol.x, sol.y[0])
-    # # plt.ylim([0, 1e-6])
-    # print(sol.x)
-    # print(sol.y)
-    # print(sol.rms_residuals)
-    # print(sol.success)
     plt.legend(["Calc 2", "Calc 4"])
     plt.show()

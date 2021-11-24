@@ -1,6 +1,19 @@
 # GCA Dynamics
 Dynamics characterization for a MEMS electrostatic inchworm motor and its gap closing actuators
 
+**Publication**
+* Rauf, Ahad M., Contreras, Daniel S., Shih, Ryan M., Schindler, Craig B.,
+Pister, Kristofer S. J., "Nonlinear Dynamics of Lateral Electrostatic Gap Closing Actuators for Applications in Inchworm 
+Motors", Journal of Microelectromechanical Systems (JMEMS), 2021, https://doi.org/10.1109/JMEMS.2021.3130957.
+  
+**Note for Running This Code in Command Line/CodeOcean**
+
+This code was written in PyCharm, which runs files in their native locations and includes all files in the
+overall directory in its system path. This doesn't happen when running this code in command line, so some script
+files may require you to (a) navigate to the ``scripts/`` directory before running your code, and
+(b) fiddle with the import paths. See the FAQ below for code snippets that you can
+try appending to the top of your file to help out with (b).
+
 ## Installation
 This code just requires `numpy`, `scipy`, and `matplotlib`, although some scripts also involve the 
 `scikit-learn.metrics` module. A good script to run first after setup
@@ -29,7 +42,13 @@ These files store the drawn dimensions of your model. The code written so far is
 * `assembly.py`: Used to package multiple GCA's or other components together. Each component's state
 can affect each other, so this modularity can help simulate larger components.
   - `from assembly import AssemblyGCA`: A basic GCA, with no other components
-    
+  
+*  `scripts/`: All the script files. There are generally 4 types of scripts in this folder:
+    - `scripts/calculate_*.py`: These are just helper files for calculating different numbers in the paper.
+    - `scripts/plot_*.py`: These are plotting file, which I used to generate the figures in the paper.
+    - `scripts/sim_*.py`: These are the core simulation files. Run one of these to simulate a GCA's dynamics.
+    - `scripts/test_*.py`: These are another type of helper file, which I used to test different evaluation metrics and the like.
+  
 * `scripts/sim_gca_V_Fext_pullin.py`, etc.: Your simulation files. Because of the structure above, you can
 swap process nodes by changing an import statement or layouts by just swapping which `.csv` file 
   you're reading from. The basic structure of the code is to:
@@ -77,11 +96,15 @@ Consider mio5.varmats_from_mat to split file into single variable files
   be enough, but it reads the data correctly so who cares?
     
 * I get ```ModuleNotFoundError``` errors when trying to run scripts in command line
-  * Add the following code to the beginning of your script file, making sure to change the part in brackets to your 
+  * See the note at the top about running this code in command line. Add the following code to the beginning of your script file, making sure to change the part in brackets to your 
   specific installation
   ```python
+  import os
+  file_location = os.path.abspath(os.path.dirname( __file__))
+  dir_location = os.path.abspath(os.path.join(file_location, '..'))
   import sys
-  sys.path.append(r"C:<path to gca_dynamics folder>")
+  sys.path.append(file_location)  # or just the path to the script's folder, generally speaking
+  sys.path.append(dir_location)   # or just the path to the gca_dynamics folder, generally speaking
   ```
 
 ## Acknowledgements

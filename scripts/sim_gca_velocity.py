@@ -1,13 +1,22 @@
+"""
+Comparing GCA velocity data vs. heuristic approximation
+
+Uncomment the pawl's spring force calculation in gca.py/GCA/Fk() to model the pawl's spring force.
+"""
+
+import os
+file_location = os.path.abspath(os.path.dirname( __file__))
+dir_location = os.path.abspath(os.path.join(file_location, '..'))
+import sys
+sys.path.append(file_location)
+sys.path.append(dir_location)
+
 from assembly import AssemblyGCA
 import numpy as np
-
-np.set_printoptions(precision=3, suppress=True)
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
 from scipy.io import loadmat, savemat
 from datetime import datetime
-from sklearn.metrics import r2_score, mean_squared_error
-import time
 plt.rc('font', size=11)
 
 
@@ -48,8 +57,6 @@ def setup_inputs(**kwargs):
 
 
 def setup_inputs_RC_pullin(**kwargs):
-    # R = 44e3
-    # C = 0.38e-12
     R = 205244.8126133541 + 217573.24999999994
     C = 8.043260992499999e-13
     RC = R*C
@@ -61,8 +68,6 @@ def setup_inputs_RC_pullin(**kwargs):
 
 
 def setup_inputs_RC_release(**kwargs):
-    # R = 44e3
-    # C = 0.38e-12
     R = 205244.8126133541 + 217573.24999999994
     C = 8.043260992499999e-13
     RC = R*C
@@ -87,9 +92,6 @@ def setup_plot(len_x, len_y, plt_title=None, x_label="", y_label=""):
     fig, axs = plt.subplots(len_x, len_y)
     if plt_title is not None:
         fig.suptitle(plt_title)
-
-    # fig.text(0.5, 0.04, x_label, ha='center')
-    # fig.text(0.04, 0.5, y_label, va='center', rotation='vertical')
     return fig, axs
 
 
@@ -118,12 +120,12 @@ if __name__ == "__main__":
 
     t_span = [0, 400e-6]
     Fext = 0
-
-    data = loadmat("../data/frequency_vs_velocity.mat")
-
     nx, ny = 2, 2
     # latexify(fig_width=6, columns=3)
     fig, axs = setup_plot(nx, ny)
+
+    # Load data
+    data = loadmat("../data/frequency_vs_velocity.mat")
 
     V_values = np.ndarray.flatten(data["V"])
     frequency = []
@@ -196,7 +198,8 @@ if __name__ == "__main__":
 
         f1, f2, f3, f4 = 1./T1, 1./T2, 1./T3, 1./T4
         f_max = min(f1, f2, f3, f4)
-        print("Max frequencies:", f1, f2, f3, f4, f_max)
+        f_max_idx = np.argmin([f1, f2, f3, f4])
+        print("Max frequencies:", f1, f2, f3, f4, f_max, f_max_idx + 1)
         print(V, i//ny, i%ny)
         axs[i//ny][i%ny].axvline(f_max/1e3, linestyle="--", color="grey")  # convert to kHz
 
@@ -215,6 +218,6 @@ if __name__ == "__main__":
     plt.ylabel("Velocity (m/s)")
 
     plt.tight_layout()
-    plt.savefig("../figures/" + timestamp + ".png")
-    plt.savefig("../figures/" + timestamp + ".pdf")
+    # plt.savefig("../figures/" + timestamp + ".png")
+    # plt.savefig("../figures/" + timestamp + ".pdf")
     plt.show()

@@ -1,3 +1,19 @@
+"""
+Setting up the simulation code for simulations vs. load force, which we collected data on but haven't properly
+characterized yet! Might be a good simulation to run in the future.
+Simulates the effect of varying finger overlap length and voltage on the pull-in for a GCA given an external load force.
+The intention was to model the effect of load forces from, say, the shuttle on the GCA dynamics.
+
+See Sec. 3.9 in Craig Schindler's dissertation for more details about the setup
+(https://www2.eecs.berkeley.edu/Pubs/TechRpts/2020/EECS-2020-73.pdf).
+"""
+import os
+file_location = os.path.abspath(os.path.dirname( __file__))
+dir_location = os.path.abspath(os.path.join(file_location, '..'))
+import sys
+sys.path.append(file_location)
+sys.path.append(dir_location)
+
 from assembly import AssemblyGCA
 import numpy as np
 from scipy.integrate import solve_ivp
@@ -26,7 +42,7 @@ def sim_gca(model, u, t_span, verbose=False):
     terminate_simulation = lambda t, x: model.terminate_simulation(t, x)
     terminate_simulation.terminal = True
 
-    sol = solve_ivp(f, t_span, x0, events=[terminate_simulation], dense_output=True, max_step=0.5e-6, method="LSODA")
+    sol = solve_ivp(f, t_span, x0, events=[terminate_simulation], dense_output=True, max_step=0.01e-6, method="LSODA")
     return sol
 
 
@@ -86,11 +102,11 @@ if __name__ == "__main__":
         V_test = V_values
         # V_test = np.arange(min(V_values), max(V_values))
 
-        if idy != 0:
-            model.gca.add_support_spring(springW=support_spring_widths[idy], springL=594.995e-6, nBeams=16,
-                                         endcapW=22.889e-6, endcapL=49.441e-6,
-                                         etchholeSize=8e-6, nEtchHoles=3, nEndCaps=8*2,
-                                         k=Fext/(385.33e-6 + 2*model.gca.process.overetch))
+        # if idy != 0:
+        #     model.gca.add_support_spring(springW=support_spring_widths[idy], springL=594.995e-6, nBeams=16,
+        #                                  endcapW=22.889e-6, endcapL=49.441e-6,
+        #                                  etchholeSize=8e-6, nEtchHoles=3, nEndCaps=8*2,
+        #                                  k=Fext/(385.33e-6 + 2*model.gca.process.overetch))
 
         # (adds a lot of compute time, since failed simulations take time)
         for V in V_test:
@@ -106,6 +122,6 @@ if __name__ == "__main__":
         plt.plot(V_converged, times_converged, color=colors[idy])
 
     plt.tight_layout()
-    plt.savefig("../figures/" + timestamp + ".png")
-    plt.savefig("../figures/" + timestamp + ".pdf")
+    # plt.savefig("../figures/" + timestamp + ".png")
+    # plt.savefig("../figures/" + timestamp + ".pdf")
     plt.show()

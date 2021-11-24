@@ -1,3 +1,8 @@
+"""
+Compare various finger bending metrics to data from a CoventorWare simulation
+Data for CoventorWare stored in /data/fingertip_deflection.mat.
+"""
+
 from assembly import AssemblyGCA
 from process import SOI
 import numpy as np

@@ -1,6 +1,15 @@
 """
-Simulate the pull-in and release of a GCA vs. voltage while sweeping over finger lengths
+Pre-decessor to the _undercut variation of this same file, which was ultimately used for the final paper.
+Simulate the pull-in and release of a GCA vs. voltage while sweeping over finger lengths. Uses the fixed
+undercut from whichever process you import (or you can specify it manually).
 """
+
+import os
+file_location = os.path.abspath(os.path.dirname( __file__))
+dir_location = os.path.abspath(os.path.join(file_location, '..'))
+import sys
+sys.path.append(file_location)
+sys.path.append(dir_location)
 
 from assembly import AssemblyGCA
 from process import *

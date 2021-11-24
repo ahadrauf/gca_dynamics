@@ -1,3 +1,16 @@
+"""
+One of the core files from the paper, which generated Fig. 10. Simulates the effect of varying finger overlap length and
+voltage on the pull-in underwater, and varies the undercut to minimize the error squared between the simulation
+and data.
+"""
+
+import os
+file_location = os.path.abspath(os.path.dirname( __file__))
+dir_location = os.path.abspath(os.path.join(file_location, '..'))
+import sys
+sys.path.append(file_location)
+sys.path.append(dir_location)
+
 from assembly import AssemblyGCA
 from process import *
 import numpy as np
@@ -7,8 +20,6 @@ from scipy.io import loadmat, savemat
 from datetime import datetime
 from sklearn.metrics import r2_score, mean_squared_error
 import time
-
-np.set_printoptions(precision=3, suppress=True)
 
 
 def setup_model_pullin(process):

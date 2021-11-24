@@ -1,3 +1,14 @@
+"""
+Simulate switch bounce behavior assuming a perfectly elastic collisions (i.e., no energy loss)
+"""
+
+import os
+file_location = os.path.abspath(os.path.dirname( __file__))
+dir_location = os.path.abspath(os.path.join(file_location, '..'))
+import sys
+sys.path.append(file_location)
+sys.path.append(dir_location)
+
 from assembly import AssemblyGCA
 from process import *
 import numpy as np
@@ -5,8 +16,6 @@ from scipy.integrate import solve_ivp
 from scipy.io import loadmat, savemat
 import matplotlib.pyplot as plt
 from datetime import datetime
-
-np.set_printoptions(precision=3, suppress=True)
 
 
 def setup_model_pullin():

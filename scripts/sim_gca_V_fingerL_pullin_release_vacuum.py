@@ -1,3 +1,16 @@
+"""
+Setting up the simulation code for in-vacuum simulations, which we might do in the future! Who knows, we couldn't get
+the vacuum chamber set up in time for this paper unfortunately because of COVID-19 delays. :(
+Simulates the effect of varying finger overlap length and voltage on the pull-in for a GCA in a vaccum. The intention
+was to model the dynamics when there's no damping term to mess up switch bounce, release behavior, and the like.
+"""
+import os
+file_location = os.path.abspath(os.path.dirname( __file__))
+dir_location = os.path.abspath(os.path.join(file_location, '..'))
+import sys
+sys.path.append(file_location)
+sys.path.append(dir_location)
+
 from assembly import AssemblyGCA
 from process import *
 import numpy as np

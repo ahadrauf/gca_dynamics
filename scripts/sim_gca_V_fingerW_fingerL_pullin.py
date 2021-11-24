@@ -1,3 +1,17 @@
+"""
+A helper file used for doing parameter sweeps over both finger width and finger overlap length. Matches up with the data
+collected by Craig Schindler in the data file data/craig_V_fingerL_fingerW_pullin_release.mat, but I never finished this
+file to the level where I compared the fit between the data and the simulation. The main reason was because we didn't
+test enough devices during that run, so there wasn't enough data for a proper standard deviation. Maybe next time!
+"""
+
+import os
+file_location = os.path.abspath(os.path.dirname( __file__))
+dir_location = os.path.abspath(os.path.join(file_location, '..'))
+import sys
+sys.path.append(file_location)
+sys.path.append(dir_location)
+
 from assembly import AssemblyGCA
 import numpy as np
 from scipy.integrate import solve_ivp

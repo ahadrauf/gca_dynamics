@@ -1,5 +1,14 @@
+"""
+Plot v1 of Fig. 4's parameter sweep, which varies over Fes, Fb, Fk, and m_GCA
+Deprecated in favor of v2 because of reviewer comments that v2 was more applicable to physical implementations
+"""
+
+import os
+file_location = os.path.abspath(os.path.dirname( __file__))
+dir_location = os.path.abspath(os.path.join(file_location, '..'))
 import sys
-sys.path.append(r"C:\Users\ahadrauf\Desktop\Research\Pister\gca_dynamics")
+sys.path.append(file_location)
+sys.path.append(dir_location)
 
 from assembly import AssemblyGCA
 import numpy as np

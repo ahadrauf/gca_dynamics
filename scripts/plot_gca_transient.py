@@ -1,3 +1,16 @@
+"""
+Similarly inspired compared to sim_gca_transient.py, except with extra plotting/saving functionality. It takes a little
+longer to run in exchange for better fidelity, making this version a little better for production-quality photos
+while sim_gca_transient.py is the quick and dirty debugging tool.
+"""
+
+import os
+file_location = os.path.abspath(os.path.dirname( __file__))
+dir_location = os.path.abspath(os.path.join(file_location, '..'))
+import sys
+sys.path.append(file_location)
+sys.path.append(dir_location)
+
 from assembly import AssemblyGCA
 import numpy as np
 from scipy.integrate import solve_ivp

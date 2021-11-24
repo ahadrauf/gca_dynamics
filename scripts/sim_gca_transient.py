@@ -1,3 +1,16 @@
+"""
+One of the most useful helpful files in this whole library. Runs a pull-in/release simulation of a GCA, and plots
+both the [spine position, spine velocity] curve on the left but also the various forces on the right. This is a very
+helpful debugging tool if you're trying to understand why your motor is moving differentthan you expected.
+"""
+
+import os
+file_location = os.path.abspath(os.path.dirname( __file__))
+dir_location = os.path.abspath(os.path.join(file_location, '..'))
+import sys
+sys.path.append(file_location)
+sys.path.append(dir_location)
+
 from assembly import AssemblyGCA
 import numpy as np
 from scipy.integrate import solve_ivp

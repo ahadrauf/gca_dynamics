@@ -1,6 +1,14 @@
 """
-Simulate the pull-in and release of an underwater GCA vs. voltage while sweeping over finger lengths
+Pre-decessor to the _undercut variation of this same file, which was ultimately used for the final paper.
+Simulates the effect of varying finger overlap length and voltage on the pull-in for an underwater GCA.
 """
+
+import os
+file_location = os.path.abspath(os.path.dirname( __file__))
+dir_location = os.path.abspath(os.path.join(file_location, '..'))
+import sys
+sys.path.append(file_location)
+sys.path.append(dir_location)
 
 import time
 from assembly import AssemblyGCA

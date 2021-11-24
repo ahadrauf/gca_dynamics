@@ -1,5 +1,14 @@
+"""
+Plot v2 of Fig. 4's parameter sweep, which varies over overlap length, finger width, initial front gap, and support spring width
+Written in response to reviewer comments that v1 wasn't as helpful for future implementation work
+"""
+
+import os
+file_location = os.path.abspath(os.path.dirname( __file__))
+dir_location = os.path.abspath(os.path.join(file_location, '..'))
 import sys
-sys.path.append(r"C:\Users\ahadrauf\Desktop\Research\Pister\gca_dynamics")
+sys.path.append(file_location)
+sys.path.append(dir_location)
 
 from assembly import AssemblyGCA
 import numpy as np

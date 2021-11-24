@@ -1,3 +1,15 @@
+"""
+One of the core files from the paper, which generated Fig. 6-7. Plots the pull-in/release sensor traces for easy
+visualization. You can switch between Fig. 6/7 by uncommenting their respective sections below.
+"""
+
+import os
+file_location = os.path.abspath(os.path.dirname( __file__))
+dir_location = os.path.abspath(os.path.join(file_location, '..'))
+import sys
+sys.path.append(file_location)
+sys.path.append(dir_location)
+
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.io import loadmat, savemat

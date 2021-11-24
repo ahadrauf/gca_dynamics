@@ -6,12 +6,21 @@ from process import SOI
 import numpy as np
 from scipy.integrate import quad, solve_bvp
 import csv
-import time
 from timeit import default_timer as timer
 
 
 class GCA:
     def __init__(self, drawn_dimensions_filename, process=SOI(), x0=None, Fescon=1., Fbcon=1., Fkcon=1., mcon=1.):
+        """
+        Sets up a GCA object
+        :param drawn_dimensions_filename: A CSV file with the drawn dimensions of the physical layout. Often found in the layouts/ folder.
+        :param process: Process parameters, from the process.py file.
+        :param x0: The initial position of the GCA. Defaults to [0, 0] if not set explicitly, but it can be reset later by setting the variable gca.x0.
+        :param Fescon: A multiplier applied to the electrostatic force during dynamics. Used for parameter sweeps.
+        :param Fbcon: A multiplier applied to the damping force during dynamics. Used for parameter sweeps.
+        :param Fkcon: A multiplier applied to the spring force during dynamics. Used for parameter sweeps.
+        :param mcon: A multiplier applied to the mass during dynamics. Used for parameter sweeps.
+        """
         self.process = process
         self.extract_real_dimensions_from_drawn_dimensions(drawn_dimensions_filename)
 
@@ -26,61 +35,80 @@ class GCA:
         self.sim_log = {}
 
     def dx_dt(self, t, x, u, Fes_calc_method=2, Fb_calc_method=2):
-        t_SOI = self.process.t_SOI
-        density = self.process.density
-
+        """
+        Calculates dx/dt for dynamics simulations
+        :param t: The time of the simulation. Generally not used for dynamics.
+        :param x: The state of the GCA [position of spine, velocity of spine]
+        :param u: The inputs into the system [applied voltage, external applied load]
+        :param Fes_calc_method: Which version of the electrostatic force calculation to perform. Version 2 is used in the paper.
+        :param Fb_calc_method: Which version of the damping force calculation to perform. Version 2 is used in the paper.
+        :return: dx/dt (np.array)
+        """
         V, Fext = self.unzip_input(u)
         Fes = self.Fes(x, u, calc_method=Fes_calc_method)
         Fb, Fbsf, Fbcf = self.Fb(x, u, calc_method=Fb_calc_method)
         Fk = self.Fk(x, u)
         self.add_to_sim_log(['t', 'Fes', 'Fb', 'Fk', 'Fbsf', 'Fbcf'], [t, Fes, Fb, Fk, Fbsf, Fbcf])
 
-        # print(t, x[0], x[1], Fes, Fb, Fk, Fes - Fb - Fk - Fext)
-
         return np.array([x[1],
                          (Fes - Fb - Fk - Fext)/(self.mcon*self.m_total)])
 
-    def Fes(self, x, u, calc_method=1):
+    def Fes(self, x, u, calc_method=2):
+        """
+        Electrostatic force felt by the GCA
+        :param x: The state of the GCA [position of spine, velocity of spine]
+        :param u: The inputs into the system [applied voltage, external applied load]
+        :param calc_method: Which version of the electrostatic force calculation to perform. Version 2 is used in the
+        paper. Only versions 1 and 2 are supported here.
+        :return: Electrostatic force
+        """
         x, xdot = self.unzip_state(x)
         V, Fext = self.unzip_input(u)
 
-        # Fes_calc2 = self.Fes_calc2(x, V)
-        # print("Fes1: %0.3e, Fes2: %0.3e" % (Fes_calc1(), Fes_calc2()))
-        if V == 0:  # for speed
+        if V == 0:  # for speed when modelling release dynamics
             Fes = 0
         else:
             if calc_method == 1:
                 Fes = self.Fes_calc1(x, V)
             elif calc_method == 2:
                 Fes = self.Fes_calc2(x, V)[0]
-                # v1 = Fes_calc1()
-                # print("v1", v1, "v2", Fes, Fes/v1)
             else:
                 Fes = 0
 
-        # return self.Fescon*Fes
         return Fes  # Fescon handled within Fes functions
 
     def Fk(self, x, u):
+        """
+        :param x: The state of the GCA [position of spine, velocity of spine]
+        :param u: The inputs into the system [applied voltage, external applied load]. Not used.
+        :return: Spring force
+        """
         x, xdot = self.unzip_state(x)
         k = self.k_support
         Fk = self.Fkcon*k*x
 
-        # A stop-gap measure for velocity testing simulations
+        # A stop-gap measure for velocity testing simulations, uncomment when testing modelling those
         # Note that 0.2um undercut for pawl-to-shuttle gaps, as mentioned in Craig's dissertation pg. 32
         # https://www2.eecs.berkeley.edu/Pubs/TechRpts/2020/EECS-2020-73.pdf
-        if x > (3e-6 + 2*0.2e-6):
-            Estar = self.process.E/(1 - self.process.v**2)
-            w_pawl = 4e-6 - 2*self.process.undercut
-            L_pawl = 122e-6
-            I_pawl = w_pawl**3*self.process.t_SOI/12
-            k += 3*Estar*I_pawl/L_pawl**3
-            Fk += self.Fkcon*k*(x - (3e-6 + 2*0.2e-6))/np.cos(np.deg2rad(65))
-        # print(self.spineA*self.process.t_SOI*self.process.density)
+        # if x > (3e-6 + 2*0.2e-6):
+        #     Estar = self.process.E/(1 - self.process.v**2)
+        #     w_pawl = 4e-6 - 2*self.process.undercut
+        #     L_pawl = 122e-6
+        #     I_pawl = w_pawl**3*self.process.t_SOI/12
+        #     k += 3*Estar*I_pawl/L_pawl**3
+        #     Fk += self.Fkcon*k*(x - (3e-6 + 2*0.2e-6))/np.cos(np.deg2rad(65))
 
         return Fk
 
     def Fb(self, x, u, calc_method=2):
+        """
+        Damping force felt by the GCA
+        :param x: The state of the GCA [position of spine, velocity of spine]
+        :param u: The inputs into the system [applied voltage, external applied load]
+        :param calc_method: Which version of the damping force calculation to perform. Version 2 is used in the
+        paper. Versions 1-4 are supported here.
+        :return: Damping force
+        """
         x, xdot = self.unzip_state(x)
         fingerW = self.fingerW
         fingerL = self.fingerL
@@ -93,12 +121,14 @@ class GCA:
         beta = lambda eta: 1 - (1 - 0.42)*eta
 
         def bsf_calc1():
+            # Simple squeeze film damping formula
             bsff = self.process.mu*self.Nfing*S1*(S2**3)*beta(S2/S1)*(1/gf**3)
             bsfb = self.process.mu*self.Nfing*S1*(S2**3)*beta(S2/S1)*(1/gb**3)
             bsf = bsff + bsfb
             return bsf
 
         def bsf_calc2():
+            # Squeeze film damping with a multiplier to account for fluid flow in the 2um gap between the fingers and substrate
             t_SOI_primef = t_SOI
             t_SOI_primeb = t_SOI
             bsff = self.process.mu*self.Nfing*S1*(S2**3)*beta(S2/S1)/(gf**3)
@@ -111,6 +141,9 @@ class GCA:
             return bsf
 
         def bsf_calc3():
+            # Method 2, but using a heuristic modification of the thickness term adapted from the source below
+            # Didn't use it for the paper because (a) it didn't converge as well, and (b) because the mean free path
+            # term used doesn't have a great definition in vacuum/water
             # Source: M. Li, V. Rouf, D. Horsley, “Substrate Effect in Squeeze Film Damping of Lateral Oscillating
             # Microstructures”, Digest Tech. MEMS ’13 Conference, Taipei, January 20-24, 2013, pp. 393-396.
             t_SOI_primef = t_SOI + 0.81*(gf - x + 0.94*self.process.mfp)
@@ -127,6 +160,11 @@ class GCA:
             return bsf
 
         def bsf_calc4():
+            # Method 3, but using a heuristic calculation for the dynamic viscosity of a fluid from the below source
+            # Didn't use it in the paper for similar reasons as Method 3
+            # Source: T. Veijola, H. Kuisma, J. Lahdenperä, and T. Ryhänen, “Equivalent-circuit model of the squeezed
+            # gas film in a silicon accelerometer,” Sensors and Actuators A: Physical, vol. 48, no. 3, pp. 239–248,
+            # May 1995, doi: 10.1016/0924-4247(95)00995-7.
             muf = self.process.mu/(1 + 9.638*np.power(self.process.mfp/(self.gf - x), 1.159))
             mub = self.process.mu/(1 + 9.638*np.power(self.process.mfp/(self.gb + x), 1.159))
             t_SOI_primef = t_SOI + 0.81*(gf - x + 0.94*self.process.mfp)
@@ -191,7 +229,7 @@ class GCA:
         :param V: Input voltage
         :return: (Output force, an array (size 11,) of the finger deflection at evenly spaced intervals)
         """
-        start_time = timer()
+        # start_time = timer()
         Estar = self.process.E/(1 - self.process.v**2)
         a = self.fingerL_buffer/self.fingerL_total
         gf, gb = self.gf - x, self.gb + x
@@ -210,16 +248,12 @@ class GCA:
         y = lambda xi_tilde: (gf*(c0*np.exp(-l*xi_tilde) + c1*np.exp(l*xi_tilde) + c2*np.sin(l*xi_tilde) +
                                   c3*np.cos(l*xi_tilde) - (beta**3 - beta)/(2*beta**3 + 2)))  # We only integrate over xi >= a
 
-        # dF_dx = lambda xi: self.Fescon*self.Nfing*0.5*V**2*self.process.eps0*self.process.t_SOI* \
-        #                    (1/(gf - y(xi/self.fingerL_total) - y(self.fingerL_total*(1+a)-xi))**2 -
-        #                     1/(gb + y(xi/self.fingerL_total) + y(self.fingerL_total*(1+a)-xi))**2)
-
         dF_dx = lambda xi: self.Fescon*self.Nfing*0.5*V**2*self.process.eps0*self.process.t_SOI* \
                            (1/(gf - y(xi/self.fingerL_total))**2 -
                             1/(gb + y(xi/self.fingerL_total))**2)
 
         Fes = quad(dF_dx, a*self.fingerL_total, self.fingerL_total)[0]
-        end_time = timer()
+        # end_time = timer()
         # print("Runtime for Fes_calc2, V =", V, "=", (end_time - start_time)*1e6, 'us --> ', Fes, y(1))
 
         I_fing = (self.fingerW**3)*self.process.t_SOI/12
@@ -238,27 +272,33 @@ class GCA:
         ddy2 = lambda xi: gf*(c0*lm**2*np.exp(-lm*xi) + c1*lm**2*np.exp(lm*xi) + c2*lm**2*-np.sin(lm*xi) +
                               c3*lm**2*-np.cos(lm*xi))
 
+        # E1 = simplification of curvature of formula, E2 = actual curvature formula. Not much difference for small
+        # deflections, but might as well use the full formula!
         # E1 = 0.5*Estar*I_fing*(quad(lambda xi: ddy1(xi)**2, 0, self.fingerL_buffer)[0] +
         #                        quad(lambda xi: ddy2(xi)**2, self.fingerL_buffer, self.fingerL_total)[0])
-
         E2 = 0.5*Estar*I_fing*(quad(lambda xi: (ddy1(xi)/(1 + dy1(xi)**2)**1.5)**2, 0, self.fingerL_buffer)[0] +
                                quad(lambda xi: (ddy2(xi)/(1 + dy2(xi)**2)**1.5)**2, self.fingerL_buffer,
                                     self.fingerL_total)[0])
-
         # print("Comparing energy stored in comb fingers: E_orig={}, E_calc1={}, E_calc2={}".format(E_orig, E1, E2))
 
         # calculate fringing field
-        # Source: [1]V. Leus, D. Elata, V. Leus, and D. Elata, “Fringing field effect in electrostatic actuators,” 2004.
+        # Source: V. Leus, D. Elata, “Fringing field effect in electrostatic actuators,” 2004.
         h = gf
         t = self.fingerL
         w = self.process.t_SOI
         Fescon = 1 + h/np.pi/w*(1 + t/np.sqrt(t*h + t**2))  # F = 1/2*V^2*dC/dx (C taken from Eq. 10)
         # Fescon = 1.
         # print("Fescon", Fescon)
-        # return Fescon*Fes, [y(xi) for xi in np.arange(0, 1.1, 0.1)], E2
         return Fescon*Fes, [y(xi) for xi in np.linspace(0, 1, 11)], E2
 
     def Fes_calc2_helper(self, x, V):
+        """
+        Helper function for Fes_calc2(). Easier to debug this compared to the full output of Fes_calc2().
+
+        :param x: GCA state
+        :param V: Input voltage
+        :return: (Output force, an array (size 11,) of the finger deflection at evenly spaced intervals)
+        """
         Estar = self.process.E/(1 - self.process.v**2)
         a = self.fingerL_buffer/self.fingerL_total
         gf, gb = self.gf - x, self.gb + x
@@ -288,11 +328,15 @@ class GCA:
 
     def Fes_calc3(self, x, V):
         """
-        Modified electrostatic force calculation factoring in finger bending and fringe fields
-        Derivation modified from:
-        [1] D. Elata and V. Leus, “How slender can comb-drive fingers be?,” J. Micromech.
-        Microeng., vol. 15, no. 5, pp. 1055–1059, May 2005, doi: 10.1088/0960-1317/15/5/023.
-        [2] V. Leus, D. Elata, V. Leus, and D. Elata, “Fringing field effect in electrostatic actuators,” 2004.
+        Written in response to reviewer comments asking whether finger bending between both the rotor and stator fingers
+        made a significant difference. This is a heuristic approximation, since the full form of solving the differential
+        equation based on both y(xi) and y(1-xi) is kinda complicated (it involves creating two functions f(xi)=y(xi) + y(1-xi)
+        and g(xi) = y(xi) - y(1-xi), rewriting all the boundary conditions/kinematics in terms of f(xi) and g(xi), and solving
+        the new boundary value problem). Instead, my heuristic was to calculate finger bending normally using
+        Fes_calc2_helper(), then evaluating the integral for force by adding/subtracting y(1-xi) to the gap terms.
+
+        Conclusion from my heuristic calculation below: dual finger bending doesn't matter
+        nearly as much as single finger bending, which makes sense intuitively.
 
         :param x: GCA state
         :param V: Input voltage
@@ -324,9 +368,6 @@ class GCA:
         except Exception as e:
             print("Exception occured:", a, gf, gb, beta, Vtilde, l)
 
-        # y = lambda xi: (xi < a) * (gf * (b2 * xi**2 + b3 * xi**3)) + \
-        #                (xi >= a) * (gf * (c0 * np.exp(-l * xi) + c1 * np.exp(l * xi) + c2 *
-        #                                        np.sin(l * xi) + c3 * np.cos(l * xi) - b[0]))
         y = lambda xi_tilde: (gf*(c0*np.exp(-l*xi_tilde) + c1*np.exp(l*xi_tilde) + c2*
                                   np.sin(l*xi_tilde) + c3*np.cos(l*xi_tilde) - b[0]))  # We only integrate over xi >= a
 
@@ -334,18 +375,9 @@ class GCA:
                            (1/(gf - y(xi/self.fingerL_total) - y((1 + a) - xi/self.fingerL_total))**2 -
                             1/(gb + y(xi/self.fingerL_total) + y((1 + a) - xi/self.fingerL_total))**2)
 
-        # dF_dx = lambda xi: self.Fescon*self.Nfing*0.5*V**2*self.process.eps0*self.process.t_SOI* \
-        #                    (1/(gf - y(xi/self.fingerL_total))**2 -
-        #                     1/(gb + y(xi/self.fingerL_total))**2)
-
         Fes = quad(dF_dx, a*self.fingerL_total, self.fingerL_total)[0]
 
         I_fing = (self.fingerW**3)*self.process.t_SOI/12
-        # m_fing = self.fingerW*self.fingerL_total*self.process.t_SOI*self.process.density
-        # x_fing = y(1.0)
-        # w1 = (1.875**2)*np.sqrt(self.process.E*I_fing/(m_fing*(self.fingerL_total**3)))
-        # v_fing = w1*x_fing/2
-        # E_orig = 0.5*m_fing*v_fing**2
 
         b2m, b3m = b2/self.fingerL_total**2, b3/self.fingerL_total**3
         lm = l/self.fingerL_total
@@ -356,14 +388,9 @@ class GCA:
         ddy2 = lambda xi: gf*(c0*lm**2*np.exp(-lm*xi) + c1*lm**2*np.exp(lm*xi) + c2*lm**2*-np.sin(lm*xi) +
                               c3*lm**2*-np.cos(lm*xi))
 
-        # E1 = 0.5*Estar*I_fing*(quad(lambda xi: ddy1(xi)**2, 0, self.fingerL_buffer)[0] +
-        #                        quad(lambda xi: ddy2(xi)**2, self.fingerL_buffer, self.fingerL_total)[0])
-
         E2 = 0.5*Estar*I_fing*(quad(lambda xi: (ddy1(xi)/(1 + dy1(xi)**2)**1.5)**2, 0, self.fingerL_buffer)[0] +
                                quad(lambda xi: (ddy2(xi)/(1 + dy2(xi)**2)**1.5)**2, self.fingerL_buffer,
                                     self.fingerL_total)[0])
-
-        # print("Comparing energy stored in comb fingers: E_orig={}, E_calc1={}, E_calc2={}".format(E_orig, E1, E2))
 
         # calculate fringing field
         # Source: [1]V. Leus, D. Elata, V. Leus, and D. Elata, “Fringing field effect in electrostatic actuators,” 2004.
@@ -377,11 +404,8 @@ class GCA:
 
     def Fes_calc4(self, x, V):
         """
-        Modified electrostatic force calculation factoring in finger bending and fringe fields
-        Derivation modified from:
-        [1] D. Elata and V. Leus, “How slender can comb-drive fingers be?,” J. Micromech.
-        Microeng., vol. 15, no. 5, pp. 1055–1059, May 2005, doi: 10.1088/0960-1317/15/5/023.
-        [2] V. Leus, D. Elata, V. Leus, and D. Elata, “Fringing field effect in electrostatic actuators,” 2004.
+        Written in response to reviewer comments about how the linearized model compared to the numerical solution.
+        Solves the bounded value problem in Eq. 20 with boundary conditions in Eq. 22/23.
 
         :param x: GCA state
         :param V: Input voltage
@@ -427,11 +451,6 @@ class GCA:
             y0[1, i] = dy(xi)
             y0[2, i] = ddy(xi)
             y0[3, i] = dddy(xi)
-        # y0[0, len(xi_range) - 1] -= 0.1
-
-        # y0 = np.zeros((4, xi.size))
-        # print(xi_range)
-        # print(y0)
 
         sol = solve_bvp(dy_dxi, bc, xi_range, y0, verbose=0, tol=0.0001)
 
@@ -441,7 +460,6 @@ class GCA:
                            (1/(gf - y(xi))**2 - 1/(gb + y(xi))**2)
         Fes = quad(dF_dx, a*self.fingerL_total, self.fingerL_total)[0]
         end_time = timer()
-        # print("Runtime for Fes_calc4, V =", V, "=", (end_time - start_time))
         # print("Runtime for Fes_calc4, V =", V, "=", (end_time - start_time)*1e6, 'us --> ', Fes, y(self.fingerL_total))
 
         # calculate fringing field
@@ -493,8 +511,8 @@ class GCA:
         V, Fext = self.unzip_input(u)
         x = np.array([self.x_GCA, 0])
         # Fes = self.Fes(x, u)/self.Nfing  # Fes for one finger!
-        # Fes, y, Ues = self.Fes_calc2(x[0], V)
-        Fes, y, Ues = self.Fes_calc1(x[0], V)
+        Fes, y, Ues = self.Fes_calc2(x[0], V)
+        # Fes, y, Ues = self.Fes_calc1(x[0], V)
         Fes = Fes/self.Nfing
 
         # Finger release dynamics
@@ -503,14 +521,14 @@ class GCA:
         k_fing = 8*self.process.E*I_fing/(self.fingerL_total**3)
         m_fing = self.fingerW*self.fingerL_total*self.process.t_SOI*self.process.density
         x_fing_orig = Fes/k_fing
-        # Fes_parallelplate = self.Fes_calc1(x[0], V)/self.Nfing
-        # x_fing_orig_parallelplate = Fes_parallelplate/k_fing
-        # x_fing = y[-1]
-        # w1 = (1.875**2)*np.sqrt(self.process.E*I_fing/(m_fing*(self.fingerL_total**3)))
-        # # m_fing_2 = k_fing/w1**2
-        # m_fing_2 = Fes/x_fing/w1**2
-        # v_fing = w1*x_fing/2
-        # U_fing_parallelplate = 0.5*k_fing*x_fing_orig_parallelplate**2
+        Fes_parallelplate = self.Fes_calc1(x[0], V)/self.Nfing
+        x_fing_orig_parallelplate = Fes_parallelplate/k_fing
+        x_fing = y[-1]
+        w1 = (1.875**2)*np.sqrt(self.process.E*I_fing/(m_fing*(self.fingerL_total**3)))
+        # m_fing_2 = k_fing/w1**2
+        m_fing_2 = Fes/x_fing/w1**2
+        v_fing = w1*x_fing/2
+        U_fing_parallelplate = 0.5*k_fing*x_fing_orig_parallelplate**2
 
         # wpp = Fes_parallelplate/self.fingerL_total
         # y_pp = lambda xi: wpp/(24*self.process.E*I_fing)*(
@@ -544,26 +562,28 @@ class GCA:
         m_tot = self.spineA*self.process.t_SOI*self.process.density
 
         # Calculate Q factor
-        b = self.Fb((self.x_GCA, 1.), [0, 0])[0]/self.Nfing
-        k_fing_natural = 3*self.process.E*I_fing/(self.fingerL_total**3)
-        print("Q factor = sqrt(mk)/b, m={}, k={}, b={}".format(m_fing, k_fing_natural, b))
-        print("Q = ", np.sqrt(m_fing*k_fing_natural)/b)
+        # b = self.Fb((self.x_GCA, 1.), [0, 0])[0]/self.Nfing
+        # k_fing_natural = 3*self.process.E*I_fing/(self.fingerL_total**3)
+        # print("Q factor = sqrt(mk)/b, m={}, k={}, b={}".format(m_fing, k_fing_natural, b))
+        # print("Q = ", np.sqrt(m_fing*k_fing_natural)/b)
 
-        # Conservation of linear momentum
-        # v0 = (self.Nfing*m_fing*v_fing + m_spine*v_spine + m_support*v_support)/(
-        #         self.Nfing*m_fing + m_spine + m_support)
-        # v0_orig = (self.Nfing*m_fing*v_fing + m_spine*v_spine)/(self.Nfing*m_fing + m_spine)
-        # v0_2 = (self.Nfing*m_fing_2*v_fing + m_spine*v_spine)/(self.Nfing*m_fing_2 + m_spine)
-        # v0_3 = (self.Nfing*m_fing*v_fing + m_spine_v2*v_spine_v2)/(self.Nfing*m_fing + m_spine_v2)
-        # v0_4 = (self.Nfing*m_fing_2*v_fing + m_spine_v2*v_spine_v2)/(self.Nfing*m_fing_2 + m_spine_v2)
-        # v0_5 = np.sqrt((self.Nfing*m_fing*v_fing**2 + m_spine*v_spine**2)/(self.Nfing*m_fing + m_spine))
-        # v0_6 = np.sqrt((self.Nfing*m_fing_2*v_fing**2 + m_spine*v_spine**2)/(self.Nfing*m_fing_2 + m_spine))
-        # v0_7 = np.sqrt((self.Nfing*m_fing*v_fing**2 + m_spine_v2*v_spine_v2**2)/(self.Nfing*m_fing + m_spine_v2))
-        # v0_8 = np.sqrt((self.Nfing*m_fing_2*v_fing**2 + m_spine_v2*v_spine_v2**2)/(self.Nfing*m_fing_2 + m_spine_v2))
-        # v0_9 = np.sqrt((self.Nfing*m_fing*v_fing**2 + m_spine*v_spine**2 + m_support*v_support**2)/(
-        #         self.Nfing*m_fing + m_spine + m_support))
-        # v0_10 = np.sqrt((self.Nfing*m_fing_2*v_fing**2 + m_spine*v_spine**2 + m_support*v_support**2)/(
-        #         self.Nfing*m_fing_2 + m_spine + m_support))
+        # Many many many heuristic calculations for initial velocity
+        # Some conserve momentum, some energy, some include the support spring, some are just plain weird.
+        # v11 turned out to be the best fit.
+        v0 = (self.Nfing*m_fing*v_fing + m_spine*v_spine + m_support*v_support)/(
+                self.Nfing*m_fing + m_spine + m_support)
+        v0_orig = (self.Nfing*m_fing*v_fing + m_spine*v_spine)/(self.Nfing*m_fing + m_spine)
+        v0_2 = (self.Nfing*m_fing_2*v_fing + m_spine*v_spine)/(self.Nfing*m_fing_2 + m_spine)
+        v0_3 = (self.Nfing*m_fing*v_fing + m_spine_v2*v_spine_v2)/(self.Nfing*m_fing + m_spine_v2)
+        v0_4 = (self.Nfing*m_fing_2*v_fing + m_spine_v2*v_spine_v2)/(self.Nfing*m_fing_2 + m_spine_v2)
+        v0_5 = np.sqrt((self.Nfing*m_fing*v_fing**2 + m_spine*v_spine**2)/(self.Nfing*m_fing + m_spine))
+        v0_6 = np.sqrt((self.Nfing*m_fing_2*v_fing**2 + m_spine*v_spine**2)/(self.Nfing*m_fing_2 + m_spine))
+        v0_7 = np.sqrt((self.Nfing*m_fing*v_fing**2 + m_spine_v2*v_spine_v2**2)/(self.Nfing*m_fing + m_spine_v2))
+        v0_8 = np.sqrt((self.Nfing*m_fing_2*v_fing**2 + m_spine_v2*v_spine_v2**2)/(self.Nfing*m_fing_2 + m_spine_v2))
+        v0_9 = np.sqrt((self.Nfing*m_fing*v_fing**2 + m_spine*v_spine**2 + m_support*v_support**2)/(
+                self.Nfing*m_fing + m_spine + m_support))
+        v0_10 = np.sqrt((self.Nfing*m_fing_2*v_fing**2 + m_spine*v_spine**2 + m_support*v_support**2)/(
+                self.Nfing*m_fing_2 + m_spine + m_support))
         v0_11 = np.sqrt(2*(self.Nfing*Ues + U_spine)/self.m_total)
         v0_12 = np.sqrt(2*(self.Nfing*Ues + U_spine + U_support)/self.m_total)
 
@@ -576,14 +596,14 @@ class GCA:
         # print('Release values (Fes, v_fing, v_spine, v0):', Fes, v_fing, v_spine, v0)
         # print("mf0 mfeff mshut mshutv2 Amainspine Ashut", m_fing, m_fing_2, m_spine, m_spine_v2, self.mainspineA,
         #       self.spineW*self.spineL)
-        print("Masses m_fing, m_spine, m_support, m_fing+m_spine+m_support, m_tot, m_total", self.Nfing*m_fing, m_spine,
-              m_support, self.Nfing*m_fing + m_spine + m_support, m_tot, self.m_total)
-        print("Electrostatic Force Ifing Fes/0.5E_starI_fing", self.Nfing*Fes, I_fing, self.Nfing*Fes/0.5/Estar/I_fing)
+        # print("Masses m_fing, m_spine, m_support, m_fing+m_spine+m_support, m_tot, m_total", self.Nfing*m_fing, m_spine,
+        #       m_support, self.Nfing*m_fing + m_spine + m_support, m_tot, self.m_total)
+        # print("Electrostatic Force Ifing Fes/0.5E_starI_fing", self.Nfing*Fes, I_fing, self.Nfing*Fes/0.5/Estar/I_fing)
         # print("Energies U_es U_spine U_support", self.Nfing*Ues, U_spine, U_support, self.Nfing*E2_pp)
         # print("Original Finger Energy", self.Nfing*U_fing_parallelplate)
-        print("Deformation of Finger", max(y))
-        print("Deformation of Spine", x_spine)
-        print("Predicted velocity", np.sqrt(Ues/(0.5*m_fing)), v0_11)
+        # print("Deformation of Finger", max(y))
+        # print("Deformation of Spine", x_spine)
+        # print("Predicted velocity", np.sqrt(Ues/(0.5*m_fing)), v0_11)
         # print("If omega kf F x_orig x varr vshut vsupport", I_fing, w1, k_fing, Fes, x_fing_orig, x_fing, v_fing,
         #       v_spine, v_support)
         # print("Release values (L, k, V, x0, v0_orig)", self.fingerL, self.k_support, V, self.x_GCA, v0_orig,
@@ -592,6 +612,11 @@ class GCA:
 
     # Helper functions
     def extract_real_dimensions_from_drawn_dimensions(self, drawn_dimensions_filename):
+        """
+        Extracts the real dimensions (including the effect of undercut) from the drawn dimensions file
+        :param drawn_dimensions_filename: Path to the drawn dimensions file
+        :return: None
+        """
         undercut = self.process.undercut
 
         drawn_dimensions = {}
@@ -636,6 +661,10 @@ class GCA:
         self.update_dependent_variables()
 
     def update_dependent_variables(self):
+        """
+        Updates dependent variables. Call this after changing any of the independent device dimensions.
+        :return: None
+        """
         # if not hasattr(self, "k_support"):  # Might be overridden if taking data from papers
         Estar = self.process.E/(1 - self.process.v**2)
         self.k_support = 2*Estar*(self.supportW**3)*self.process.t_SOI/(self.supportL**3)
