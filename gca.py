@@ -521,14 +521,14 @@ class GCA:
         k_fing = 8*self.process.E*I_fing/(self.fingerL_total**3)
         m_fing = self.fingerW*self.fingerL_total*self.process.t_SOI*self.process.density
         x_fing_orig = Fes/k_fing
-        Fes_parallelplate = self.Fes_calc1(x[0], V)/self.Nfing
-        x_fing_orig_parallelplate = Fes_parallelplate/k_fing
-        x_fing = y[-1]
-        w1 = (1.875**2)*np.sqrt(self.process.E*I_fing/(m_fing*(self.fingerL_total**3)))
-        # m_fing_2 = k_fing/w1**2
-        m_fing_2 = Fes/x_fing/w1**2
-        v_fing = w1*x_fing/2
-        U_fing_parallelplate = 0.5*k_fing*x_fing_orig_parallelplate**2
+        # Fes_parallelplate = self.Fes_calc1(x[0], V)[0]/self.Nfing
+        # x_fing_orig_parallelplate = Fes_parallelplate/k_fing
+        # x_fing = y[-1]
+        # w1 = (1.875**2)*np.sqrt(self.process.E*I_fing/(m_fing*(self.fingerL_total**3)))
+        # # m_fing_2 = k_fing/w1**2
+        # m_fing_2 = Fes/x_fing/w1**2
+        # v_fing = w1*x_fing/2
+        # U_fing_parallelplate = 0.5*k_fing*x_fing_orig_parallelplate**2
 
         # wpp = Fes_parallelplate/self.fingerL_total
         # y_pp = lambda xi: wpp/(24*self.process.E*I_fing)*(
@@ -570,20 +570,20 @@ class GCA:
         # Many many many heuristic calculations for initial velocity
         # Some conserve momentum, some energy, some include the support spring, some are just plain weird.
         # v11 turned out to be the best fit.
-        v0 = (self.Nfing*m_fing*v_fing + m_spine*v_spine + m_support*v_support)/(
-                self.Nfing*m_fing + m_spine + m_support)
-        v0_orig = (self.Nfing*m_fing*v_fing + m_spine*v_spine)/(self.Nfing*m_fing + m_spine)
-        v0_2 = (self.Nfing*m_fing_2*v_fing + m_spine*v_spine)/(self.Nfing*m_fing_2 + m_spine)
-        v0_3 = (self.Nfing*m_fing*v_fing + m_spine_v2*v_spine_v2)/(self.Nfing*m_fing + m_spine_v2)
-        v0_4 = (self.Nfing*m_fing_2*v_fing + m_spine_v2*v_spine_v2)/(self.Nfing*m_fing_2 + m_spine_v2)
-        v0_5 = np.sqrt((self.Nfing*m_fing*v_fing**2 + m_spine*v_spine**2)/(self.Nfing*m_fing + m_spine))
-        v0_6 = np.sqrt((self.Nfing*m_fing_2*v_fing**2 + m_spine*v_spine**2)/(self.Nfing*m_fing_2 + m_spine))
-        v0_7 = np.sqrt((self.Nfing*m_fing*v_fing**2 + m_spine_v2*v_spine_v2**2)/(self.Nfing*m_fing + m_spine_v2))
-        v0_8 = np.sqrt((self.Nfing*m_fing_2*v_fing**2 + m_spine_v2*v_spine_v2**2)/(self.Nfing*m_fing_2 + m_spine_v2))
-        v0_9 = np.sqrt((self.Nfing*m_fing*v_fing**2 + m_spine*v_spine**2 + m_support*v_support**2)/(
-                self.Nfing*m_fing + m_spine + m_support))
-        v0_10 = np.sqrt((self.Nfing*m_fing_2*v_fing**2 + m_spine*v_spine**2 + m_support*v_support**2)/(
-                self.Nfing*m_fing_2 + m_spine + m_support))
+        # v0 = (self.Nfing*m_fing*v_fing + m_spine*v_spine + m_support*v_support)/(
+        #         self.Nfing*m_fing + m_spine + m_support)
+        # v0_orig = (self.Nfing*m_fing*v_fing + m_spine*v_spine)/(self.Nfing*m_fing + m_spine)
+        # v0_2 = (self.Nfing*m_fing_2*v_fing + m_spine*v_spine)/(self.Nfing*m_fing_2 + m_spine)
+        # v0_3 = (self.Nfing*m_fing*v_fing + m_spine_v2*v_spine_v2)/(self.Nfing*m_fing + m_spine_v2)
+        # v0_4 = (self.Nfing*m_fing_2*v_fing + m_spine_v2*v_spine_v2)/(self.Nfing*m_fing_2 + m_spine_v2)
+        # v0_5 = np.sqrt((self.Nfing*m_fing*v_fing**2 + m_spine*v_spine**2)/(self.Nfing*m_fing + m_spine))
+        # v0_6 = np.sqrt((self.Nfing*m_fing_2*v_fing**2 + m_spine*v_spine**2)/(self.Nfing*m_fing_2 + m_spine))
+        # v0_7 = np.sqrt((self.Nfing*m_fing*v_fing**2 + m_spine_v2*v_spine_v2**2)/(self.Nfing*m_fing + m_spine_v2))
+        # v0_8 = np.sqrt((self.Nfing*m_fing_2*v_fing**2 + m_spine_v2*v_spine_v2**2)/(self.Nfing*m_fing_2 + m_spine_v2))
+        # v0_9 = np.sqrt((self.Nfing*m_fing*v_fing**2 + m_spine*v_spine**2 + m_support*v_support**2)/(
+        #         self.Nfing*m_fing + m_spine + m_support))
+        # v0_10 = np.sqrt((self.Nfing*m_fing_2*v_fing**2 + m_spine*v_spine**2 + m_support*v_support**2)/(
+        #         self.Nfing*m_fing_2 + m_spine + m_support))
         v0_11 = np.sqrt(2*(self.Nfing*Ues + U_spine)/self.m_total)
         v0_12 = np.sqrt(2*(self.Nfing*Ues + U_spine + U_support)/self.m_total)
 
