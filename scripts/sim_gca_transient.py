@@ -116,9 +116,9 @@ if __name__ == "__main__":
     V = 60
     # Fext = 50e-6
     Fext = 0.
-    # model = setup_model_pullin()
-    # u = setup_inputs(V=V, Fext=0.)  # Change V=V for pullin, V=0 for release
-    model = setup_model_release(V=V, Fext=Fext)  # Change for pullin/release
+    model = setup_model_pullin()
+    u = setup_inputs(V=V, Fext=0.)  # Change V=V for pullin, V=0 for release
+    # model = setup_model_release(V=V, Fext=Fext)  # Change for pullin/release
     # model.gca.gf = 2e-6 + 2*model.gca.process.undercut  # 4.83e-6 + 2*model.gca.process.undercut
     # model.gca.x_GCA = model.gca.gf - 1e-6
     # model.gca.fingerW = 3.425e-6 - 2*model.gca.process.undercut  # 5.005e-6 + 2*model.gca.process.undercut
@@ -126,7 +126,7 @@ if __name__ == "__main__":
     # model.gca.update_dependent_variables()
     # model.gca.x0 = model.gca.x0_release([V, Fext])
     # print("x0 = ", model.gca.x0, "ours:", model.gca.x0_release([V, Fext]))
-    u = setup_inputs(V=0, Fext=Fext)  # Change V=V for pullin, V=0 for release
+    # u = setup_inputs(V=0, Fext=Fext)  # Change V=V for pullin, V=0 for release
 
     t_span = [0, 300e-6]
     sol = sim_gca(model, u, t_span)
