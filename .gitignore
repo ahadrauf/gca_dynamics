@@ -5,6 +5,7 @@ __pycache__/
 .idea/
 .vscode/
 *.xlsx
+data/simulation_results
 
 # C extensions
 *.so
