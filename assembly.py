@@ -6,6 +6,7 @@ component, helping to faciliate coupled motion (for example, coupling two GCA's 
 
 import numpy as np
 from gca import GCA
+from inchworm_motor import InchwormMotor
 from process import SOI
 
 
@@ -18,24 +19,26 @@ class Assembly:
         return np.hstack([part.x0 for part in self.parts])
 
     def dx_dt(self, t, x, u, verbose=False, **kwargs):
-        x_parts = self.unzip_state(x)
-        u_parts = self.unzip_input(u)
+        x_parts = self.unzip_state(x, u)
+        u_parts = self.unzip_input(x, u)
         dx_dt = np.hstack([part.dx_dt(t, x, u(t, x), **kwargs) for (part, x, u) in zip(self.parts, x_parts, u_parts)])
         if verbose:
             print("t: {}, x: {}, u: {}, dx/dt: {}".format(t, x, u(t, x), dx_dt))
         return dx_dt
 
-    def unzip_state(self, x):
+    def unzip_state(self, x, u):
         """
         Unzips the assembly state x to give the part states [x_part0, x_part1, ...]
         :param x: assembly state (1D np.array)
+        :param u: assembly input (1D np.array)
         :return: list of assembly states for each part (list of 1D np.arrays)
         """
         return NotImplementedError()
 
-    def unzip_input(self, u):
+    def unzip_input(self, x, u):
         """
         Unzips the assembly input u to give the part inputs [u_part0, u_part1, ...]
+        :param x: assembly state (1D np.array)
         :param u: assembly input (1D np.array)
         :return: list of assembly input for each part (list of 1D np.arrays)
         """
@@ -53,8 +56,26 @@ class AssemblyGCA(Assembly):
         self.gca = GCA(drawn_dimensions_filename=drawn_dimensions_filename, process=process)
         self.parts = [self.gca]
 
-    def unzip_state(self, x):
+    def unzip_state(self, x, u):
         return [x]
 
-    def unzip_input(self, u):
+    def unzip_input(self, x, u):
         return [u]
+
+
+class AssemblyInchwormMotor(Assembly):
+    def __init__(self, drawn_dimensions_filename="../layouts/fawn.csv", process=SOI(), **kwargs):
+        Assembly.__init__(self, process=process, **kwargs)
+        self.gca = GCA(drawn_dimensions_filename=drawn_dimensions_filename, process=process)
+        self.inchworm = InchwormMotor(drawn_dimensions_filename=drawn_dimensions_filename, process=process)
+        self.parts = [self.gca, self.inchworm]
+
+    def unzip_state(self, x, u):
+        return [x[:2], x[2:]]
+
+    def unzip_input(self, x, u):
+        x_GCA, v_GCA = x[:2]
+        if self.gca.impacted_shuttle(x_GCA):
+            return [u[:2], v_GCA*self.gca.mcon*self.gca.m_total]
+        else:
+            return [u[:2], 0.]

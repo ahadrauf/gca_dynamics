@@ -85,7 +85,7 @@ def plot_data(fig, axs, pullin_V, pullin_avg, pullin_std, release_V, release_avg
 
 
 if __name__ == "__main__":
-    pullin = True
+    pullin = False
 
     now = datetime.now()
     name_clarifier = "_vacuum_V_fingerL"
@@ -93,7 +93,7 @@ if __name__ == "__main__":
     timestamp = now.strftime("%Y%m%d_%H_%M_%S") + name_clarifier
     print(timestamp)
 
-    t_span = [0, 300e-6]
+    t_span = [0, 200e-6]
     Fext = 0
     nx, ny = 3, 3
 
@@ -103,7 +103,7 @@ if __name__ == "__main__":
     # latexify(fig_width=6, columns=3)
     fig, axs = setup_plot(nx, ny, x_label="Voltage (V)", y_label="Pull-in Time (us)")
     axs[2, 1].set_xlabel("Voltage (V)")
-    axs[1, 0].set_ylabel("Time (us)")
+    axs[1, 0].set_ylabel(r"Time ($\mu$s)")
 
     pullin_V = []
     pullin_avg = []
@@ -144,8 +144,8 @@ if __name__ == "__main__":
         V_converged = []
         times_converged = []
 
-        V_test = np.arange(20, 90.1, 0.5)
-        # V_test = np.arange(20, 90.1, 0.25) if idy != 0 else np.arange(20, 90.05, 0.05)
+        # V_test = np.arange(20, 90.1, 0.5)
+        V_test = np.arange(20, 90.1, 0.25) if idy != 0 else np.arange(20, 90.05, 0.05)
         for V in V_test:
             start_time = time.process_time()
             if pullin:  # Pullin
@@ -201,7 +201,7 @@ if __name__ == "__main__":
         V_converged = []
         times_converged = []
 
-        V_test = np.arange(20, 90.1, 0.5)
+        V_test = np.arange(20, 90.1, 0.25)
         for V in V_test:
             start_time = time.process_time()
             if pullin:  # Pullin
@@ -256,12 +256,18 @@ if __name__ == "__main__":
     # print("Release RMSE scores:", rmse_release, np.mean(rmse_release), np.std(rmse_release))
 
     # axs[0, ny-1].legend([legend_vacuum, legend_air], ['Pull-in', 'Release'])
+    # if pullin:
+    #     fig.legend([legend_vacuum, legend_air], ['Pull-in Time, Vacuum', 'Pull-in Time, Air'], loc='lower right',
+    #                ncol=2)
+    # else:
+    #     fig.legend([legend_vacuum, legend_air], ['Release Time, Vacuum', 'Release Time, Air'], loc='lower right',
+    #                ncol=2)
     if pullin:
-        fig.legend([legend_vacuum, legend_air], ['Pull-in Time, Vacuum', 'Pull-in Time, Air'], loc='lower right',
-                   ncol=2)
+        fig.legend([legend_vacuum], ['Pull-in Time, Vacuum'], loc='lower left')
+        fig.legend([legend_air], ['Pull-in Time, Air'], loc='lower right')
     else:
-        fig.legend([legend_vacuum, legend_air], ['Release Time, Vacuum', 'Release Time, Air'], loc='lower right',
-                   ncol=2)
+        fig.legend([legend_vacuum], ['Release Time, Vacuum'], loc='lower left')
+        fig.legend([legend_air], ['Release Time, Air'], loc='lower right')
 
     plt.tight_layout()
     plt.savefig("../figures/" + timestamp + ".png")

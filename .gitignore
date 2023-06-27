@@ -5,6 +5,9 @@ __pycache__/
 .idea/
 .vscode/
 *.xlsx
+*.png
+*.svg
+*.pdf
 data/simulation_results
 
 # C extensions
