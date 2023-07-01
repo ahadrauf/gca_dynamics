@@ -43,7 +43,7 @@ class InchwormMotor:
         :param Fb_calc_method: Which version of the damping force calculation to perform. Version 2 is used in the paper.
         :return: dx/dt (np.array)
         """
-        Fext = self.unzip_input(u)
+        Fext = self.unzip_input(u) * self.Ngca
         Fb = self.Fb(x, u, calc_method=Fb_calc_method)
         Fk = self.Fk(x, u)
         self.add_to_sim_log(['t', 'Fb', 'Fk'], [t, Fb, Fk])
@@ -90,19 +90,21 @@ class InchwormMotor:
                 name, value = line[:2]
                 drawn_dimensions[name] = float(value)
 
+        self.Ngca = drawn_dimensions["N_gca"]
         self.shuttleW = drawn_dimensions["shuttleW"] - 2 * undercut
         self.shuttleL = drawn_dimensions["shuttleL"] - 2 * undercut
         self.shuttle_area = drawn_dimensions["shuttle_area"]
         self.shuttle_mass = drawn_dimensions["shuttle_mass"]
         self.shuttle_spring_k = drawn_dimensions["shuttle_spring_k"]
         self.shuttle_spring_area = drawn_dimensions["shuttle_spring_area"]
+        self.update_dependent_variables()
 
     def update_dependent_variables(self):
         """
         Updates dependent variables. Call this after changing any of the independent device dimensions.
         :return: None
         """
-        pass
+        self.m_total = self.shuttle_mass + self.shuttle_spring_area * self.process.t_SOI * self.process.density / 3
 
     def add_to_sim_log(self, names, values):
         for name, value in zip(names, values):

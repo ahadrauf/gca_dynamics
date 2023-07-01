@@ -135,14 +135,15 @@ if __name__ == "__main__":
     t_sim = np.append(t_sim_pullin, t_sim_release + max(t_sim_pullin))
     x = np.append(sol_pullin.sol(t_sim_pullin)[0, :], sol_release.sol(t_sim_release)[0, :])
     v = np.append(sol_pullin.sol(t_sim_pullin)[1, :], sol_release.sol(t_sim_release)[1, :])
-    offset = 30e-6
+    offset = max(t_sim_pullin)
 
     title = "GCA Simulation, V = {}".format(V)
     fig = plt.figure()
 
     ax1 = plt.subplot(111)
-    line1, = plt.plot(t_sim_pullin*1e6, sol_pullin.sol(t_sim_pullin)[0, :]*1e6, 'b-', label="x")
-    plt.plot((t_sim_release + offset)*1e6, sol_release.sol(t_sim_release)[0, :]*1e6, 'b-', label='_nolegend_')
+    # line1, = plt.plot(t_sim_pullin*1e6, sol_pullin.sol(t_sim_pullin)[0, :]*1e6, 'b-', label="x")
+    # plt.plot((t_sim_release + offset)*1e6, sol_release.sol(t_sim_release)[0, :]*1e6, 'b-', label='_nolegend_')
+    line1, = plt.plot(t_sim*1e6, x*1e6, 'b-', label="x")
     plt.xlabel('t (us)')
     plt.ylabel('x (um)')
     # plt.legend()
@@ -157,7 +158,7 @@ if __name__ == "__main__":
     ax1_right.tick_params(axis='y', colors='red')
 
     ax1.axvline(max(t_sim_pullin)*1e6, color='k', linestyle='--')
-    ax1.axvline(offset*1e6, color='k', linestyle='--')
+    # ax1.axvline(offset*1e6, color='k', linestyle='--')
     plt.title(title)
     plt.legend([line1, line2], [line1.get_label(), line2.get_label()], loc='center right')
 

@@ -94,7 +94,7 @@ class GCA:
             Estar = self.process.E / (1 - self.process.v**2)
             I_pawl = self.pawlW**3 * self.process.t_SOI / 12
             k += 3 * Estar * I_pawl / self.pawlL**3
-            Fk += self.Fkcon * k * (x - (self.x_impact + 2 * 0.2e-6)) / np.cos(np.deg2rad(67.4))  # 65))
+            Fk += self.Fkcon * k * (x - (self.x_impact + 2 * 0.2e-6)) / np.cos(self.alpha)  # 65))
         # if x > (3e-6 + 2*0.2e-6):
         #     Estar = self.process.E/(1 - self.process.v**2)
         #     w_pawl = 4e-6 - 2*self.process.undercut
@@ -220,7 +220,7 @@ class GCA:
         ddy_pp = lambda xi: wpp / (24 * self.process.E * I_fing) * (
                 12 * xi**2 - 24 * self.fingerL_total * xi + 12 * self.fingerL_total**2)
         E2_pp = 0.5 * Estar * I_fing * (
-        quad(lambda xi: (ddy_pp(xi) / (1 + dy_pp(xi)**2)**1.5)**2, 0, self.fingerL_total)[0])
+            quad(lambda xi: (ddy_pp(xi) / (1 + dy_pp(xi)**2)**1.5)**2, 0, self.fingerL_total)[0])
         return self.Fescon * Fes_parallelplate, [y_pp(xi) for xi in np.linspace(0, 1, 11)], E2_pp
 
     def Fes_calc2(self, x, V):
@@ -254,7 +254,7 @@ class GCA:
         #                                        np.sin(l * xi) + c3 * np.cos(l * xi) - b[0]))
         y = lambda xi_tilde: (gf * (c0 * np.exp(-l * xi_tilde) + c1 * np.exp(l * xi_tilde) + c2 * np.sin(l * xi_tilde) +
                                     c3 * np.cos(l * xi_tilde) - (beta**3 - beta) / (
-                                                2 * beta**3 + 2)))  # We only integrate over xi >= a
+                                            2 * beta**3 + 2)))  # We only integrate over xi >= a
 
         dF_dx = lambda xi: self.Fescon * self.Nfing * 0.5 * V**2 * self.process.eps0 * self.process.t_SOI * \
                            (1 / (gf - y(xi / self.fingerL_total))**2 -
@@ -278,8 +278,8 @@ class GCA:
                                c3 * lm * -np.sin(lm * xi))
         ddy1 = lambda xi: gf * (2 * b2m + 6 * b3m * xi)
         ddy2 = lambda xi: gf * (
-                    c0 * lm**2 * np.exp(-lm * xi) + c1 * lm**2 * np.exp(lm * xi) + c2 * lm**2 * -np.sin(lm * xi) +
-                    c3 * lm**2 * -np.cos(lm * xi))
+                c0 * lm**2 * np.exp(-lm * xi) + c1 * lm**2 * np.exp(lm * xi) + c2 * lm**2 * -np.sin(lm * xi) +
+                c3 * lm**2 * -np.cos(lm * xi))
 
         # E1 = simplification of curvature of formula, E2 = actual curvature formula. Not much difference for small
         # deflections, but might as well use the full formula!
@@ -398,8 +398,8 @@ class GCA:
                                c3 * lm * -np.sin(lm * xi))
         ddy1 = lambda xi: gf * (2 * b2m + 6 * b3m * xi)
         ddy2 = lambda xi: gf * (
-                    c0 * lm**2 * np.exp(-lm * xi) + c1 * lm**2 * np.exp(lm * xi) + c2 * lm**2 * -np.sin(lm * xi) +
-                    c3 * lm**2 * -np.cos(lm * xi))
+                c0 * lm**2 * np.exp(-lm * xi) + c1 * lm**2 * np.exp(lm * xi) + c2 * lm**2 * -np.sin(lm * xi) +
+                c3 * lm**2 * -np.cos(lm * xi))
 
         E2 = 0.5 * Estar * I_fing * (quad(lambda xi: (ddy1(xi) / (1 + dy1(xi)**2)**1.5)**2, 0, self.fingerL_buffer)[0] +
                                      quad(lambda xi: (ddy2(xi) / (1 + dy2(xi)**2)**1.5)**2, self.fingerL_buffer,
@@ -453,11 +453,11 @@ class GCA:
                                                                            c2 * np.sin(l * xi) + c3 * np.cos(l * xi) -
                                                                            (beta**3 - beta) / (2 * beta**3 + 2))
         dy = lambda xi: (xi < a) * (2 * b2 * xi + 3 * b3 * xi**2) + (xi >= a) * (
-                    c0 * -l * np.exp(-l * xi) + c1 * l * np.exp(l * xi) +
-                    c2 * l * np.cos(l * xi) + c3 * -l * np.sin(l * xi))
+                c0 * -l * np.exp(-l * xi) + c1 * l * np.exp(l * xi) +
+                c2 * l * np.cos(l * xi) + c3 * -l * np.sin(l * xi))
         ddy = lambda xi: (xi < a) * (2 * b2 + 6 * b3 * xi) + (xi >= a) * (
-                    c0 * l**2 * np.exp(-l * xi) + c1 * l**2 * np.exp(l * xi) +
-                    c2 * -l**2 * np.sin(l * xi) + c3 * -l**2 * np.cos(l * xi))
+                c0 * l**2 * np.exp(-l * xi) + c1 * l**2 * np.exp(l * xi) +
+                c2 * -l**2 * np.sin(l * xi) + c3 * -l**2 * np.cos(l * xi))
         dddy = lambda xi: (xi < a) * (6 * b3) + (xi >= a) * (c0 * -l**3 * np.exp(-l * xi) + c1 * l**3 * np.exp(l * xi) +
                                                              c2 * -l**3 * np.cos(l * xi) + c3 * l**3 * np.sin(l * xi))
         y0 = np.zeros((4, np.size(xi_range)))
@@ -564,7 +564,7 @@ class GCA:
         # print("U_fing", Ues, U_fing_parallelplate, 0.5*Fes_parallelplate**2/k_fing, E2_pp)
 
         # Spine axial spring compression
-        if x[0] > 0.99*self.x_GCA:
+        if x[0] >= self.x_impact:
             k_spine = self.process.E * (self.process.t_SOI * self.spineW) / self.spineL
             m_spine = self.mainspineA * self.process.t_SOI * self.process.density
             m_spine_v2 = self.spineW * self.spineL * self.process.t_SOI * self.process.density
@@ -630,7 +630,7 @@ class GCA:
         #       v_spine, v_support)
         # print("Release values (L, k, V, x0, v0_orig)", self.fingerL, self.k_support, V, self.x_GCA, v0_orig,
         #       "------ v0s", v0, v0_2, v0_3, v0_4, v0_5, v0_6, v0_7, v0_8, v0_9, v0_10, v0_11, v0_12)
-        return np.array([self.x_GCA, v_curr - v0_11])
+        return np.array([x[0], x[1] - v0_11])
 
     # Helper functions
     def extract_real_dimensions_from_drawn_dimensions(self, drawn_dimensions_filename):
@@ -674,7 +674,7 @@ class GCA:
 
         # Simulating GCAs attached to inchworm motors
         if "pawlW" in drawn_dimensions:
-            self.alpha = drawn_dimensions["alpha"]
+            self.alpha = np.deg2rad(drawn_dimensions["alpha"])
             self.pawlW = drawn_dimensions["pawlW"] - 2 * undercut
             self.pawlL = drawn_dimensions["pawlL"] - undercut
             self.x_impact = drawn_dimensions["x_impact"]
@@ -695,7 +695,7 @@ class GCA:
         self.num_etch_holes = round((self.spineL - self.etch_hole_spacing - self.process.undercut) /
                                     (self.etch_hole_spacing + self.etch_hole_width))
         self.mainspineA = self.spineW * self.spineL - self.num_etch_holes * (
-                    self.etch_hole_width * self.etch_hole_height)
+                self.etch_hole_width * self.etch_hole_height)
         self.spineA = self.mainspineA + self.Nfing * self.fingerL_total * self.fingerW + 2 * self.gapstopW * self.gapstopL_half
         if hasattr(self, "pawlW"):  # GCA includes arm (attached to inchworm motor)
             self.spineA += self.pawlW * self.pawlL

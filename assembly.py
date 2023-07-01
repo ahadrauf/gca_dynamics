@@ -19,14 +19,14 @@ class Assembly:
         return np.hstack([part.x0 for part in self.parts])
 
     def dx_dt(self, t, x, u, verbose=False, **kwargs):
-        x_parts = self.unzip_state(x, u)
+        x_parts = self.unzip_state(x)
         u_parts = self.unzip_input(x, u)
         dx_dt = np.hstack([part.dx_dt(t, x, u(t, x), **kwargs) for (part, x, u) in zip(self.parts, x_parts, u_parts)])
         if verbose:
             print("t: {}, x: {}, u: {}, dx/dt: {}".format(t, x, u(t, x), dx_dt))
         return dx_dt
 
-    def unzip_state(self, x, u):
+    def unzip_state(self, x):
         """
         Unzips the assembly state x to give the part states [x_part0, x_part1, ...]
         :param x: assembly state (1D np.array)
@@ -56,7 +56,7 @@ class AssemblyGCA(Assembly):
         self.gca = GCA(drawn_dimensions_filename=drawn_dimensions_filename, process=process)
         self.parts = [self.gca]
 
-    def unzip_state(self, x, u):
+    def unzip_state(self, x):
         return [x]
 
     def unzip_input(self, x, u):
@@ -70,12 +70,12 @@ class AssemblyInchwormMotor(Assembly):
         self.inchworm = InchwormMotor(drawn_dimensions_filename=drawn_dimensions_filename, process=process)
         self.parts = [self.gca, self.inchworm]
 
-    def unzip_state(self, x, u):
+    def unzip_state(self, x):
         return [x[:2], x[2:]]
 
     def unzip_input(self, x, u):
         x_GCA, v_GCA = x[:2]
         if self.gca.impacted_shuttle(x_GCA):
-            return [u[:2], v_GCA*self.gca.mcon*self.gca.m_total]
+            return [u, lambda t, x: (v_GCA * self.gca.mcon * self.gca.m_total * np.tan(self.gca.alpha),)]  # * or /?
         else:
-            return [u[:2], 0.]
+            return [u, lambda t, x: (0.,)]
