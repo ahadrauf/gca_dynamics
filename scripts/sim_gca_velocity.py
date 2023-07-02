@@ -36,7 +36,7 @@ def setup_model_pullin_to_shuttle():
 
 def setup_model_release(**kwargs):
     u = [kwargs["V"], kwargs["Fext"]]
-    model = AssemblyGCA()
+    model = AssemblyGCA(drawn_dimensions_filename="../layouts/fawn_velocity.csv")
     model.gca.x0 = model.gca.x0_release(u)
     model.gca.terminate_simulation = model.gca.released
     return model
@@ -44,7 +44,7 @@ def setup_model_release(**kwargs):
 
 def setup_model_release_from_shuttle(**kwargs):
     u = [kwargs["V"], kwargs["Fext"]]
-    model = AssemblyGCA()
+    model = AssemblyGCA(drawn_dimensions_filename="../layouts/fawn_velocity.csv")
     model.gca.x0 = model.gca.x0_release(u)
     model.gca.terminate_simulation = lambda t, x: x[0] <= (3e-6 + 2*0.2e-6)
     return model

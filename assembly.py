@@ -18,12 +18,12 @@ class Assembly:
     def x0(self):
         return np.hstack([part.x0 for part in self.parts])
 
-    def dx_dt(self, t, x, u, verbose=False, **kwargs):
-        x_parts = self.unzip_state(x)
-        u_parts = self.unzip_input(x, u)
+    def dx_dt(self, t, X, U, verbose=False, **kwargs):
+        x_parts = self.unzip_state(X)
+        u_parts = self.unzip_input(X, U)
         dx_dt = np.hstack([part.dx_dt(t, x, u(t, x), **kwargs) for (part, x, u) in zip(self.parts, x_parts, u_parts)])
         if verbose:
-            print("t: {}, x: {}, u: {}, dx/dt: {}".format(t, x, u(t, x), dx_dt))
+            print("t: {}, x: {}, u: {}, dx/dt: {}".format(t, X, [u(t, x) for (x, u) in zip(x_parts, u_parts)], dx_dt))
         return dx_dt
 
     def unzip_state(self, x):
@@ -66,16 +66,41 @@ class AssemblyGCA(Assembly):
 class AssemblyInchwormMotor(Assembly):
     def __init__(self, drawn_dimensions_filename="../layouts/fawn.csv", process=SOI(), **kwargs):
         Assembly.__init__(self, process=process, **kwargs)
-        self.gca = GCA(drawn_dimensions_filename=drawn_dimensions_filename, process=process)
+        self.gca_pullin = GCA(drawn_dimensions_filename=drawn_dimensions_filename, process=process)
+        self.gca_release = GCA(drawn_dimensions_filename=drawn_dimensions_filename, process=process)
         self.inchworm = InchwormMotor(drawn_dimensions_filename=drawn_dimensions_filename, process=process)
-        self.parts = [self.gca, self.inchworm]
+        self.tanalpha = np.tan(self.inchworm.alpha)
+        self.parts = [self.gca_pullin, self.gca_release, self.inchworm]
+
+    def dx_dt(self, t, X, U, verbose=False, **kwargs):
+        x_parts = self.unzip_state(X)
+        u_parts = self.unzip_input(X, U)
+        dx_dt = np.hstack([part.dx_dt(t, x, u(t, x), **kwargs) for (part, x, u) in zip(self.parts, x_parts, u_parts)])
+        xp, dxp, xr, dxr, y, dy = X
+        ddxp, ddxr, ddy = dx_dt[1], dx_dt[3], dx_dt[5]
+        pawly = self.gca_pullin.pawlL * np.sin(self.gca_pullin.alpha)
+        if self.gca_pullin.impacted_shuttle(xp):
+            N = 2 * self.inchworm.Ngca
+            F_GCA = ddxp * (self.gca_pullin.mcon * self.gca_pullin.m_total)
+            F_shut = ddy * (self.inchworm.mcon * self.inchworm.m_total)
+
+            ddxp_new = (F_shut * self.tanalpha / N + F_GCA - self.gca.m_total * (dxp**2 + dy**2) / pawly) / (
+                    self.inchworm.m_total * self.tanalpha / N + self.gca_pullin.m_total / self.tanalpha)
+            ddy_new = (xp * ddxp_new + dxp**2 + dy**2) / pawly
+            dx_dt[1] = ddxp_new
+            dx_dt[5] = ddy_new
+        elif not self.gca_pullin.impacted_shuttle(xp) and self.gca_release.impacted_shuttle(xr):
+            # stop pawl from slipping backwards if release pawl is still connected, but allow it to keep moving forwards
+            if dx_dt[5] < 0:
+                dx_dt[5] = 0.
+                dx_dt[6] = 0.
+
+        if verbose:
+            print("t: {}, x: {}, u: {}, dx/dt: {}".format(t, X, [u(t, x) for (x, u) in zip(x_parts, u_parts)], dx_dt))
+        return dx_dt
 
     def unzip_state(self, x):
-        return [x[:2], x[2:]]
+        return [x[:2], x[2:4], x[4:]]
 
     def unzip_input(self, x, u):
-        x_GCA, v_GCA = x[:2]
-        if self.gca.impacted_shuttle(x_GCA):
-            return [u, lambda t, x: (v_GCA * self.gca.mcon * self.gca.m_total * np.tan(self.gca.alpha),)]  # * or /?
-        else:
-            return [u, lambda t, x: (0.,)]
+        return [u[:2], u[2:4], u[4:]]  # (V_pullin, F_ext,pullin), (V_release, F_ext,release), (F_ext,shuttle)

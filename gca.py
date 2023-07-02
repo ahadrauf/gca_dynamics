@@ -564,7 +564,7 @@ class GCA:
         # print("U_fing", Ues, U_fing_parallelplate, 0.5*Fes_parallelplate**2/k_fing, E2_pp)
 
         # Spine axial spring compression
-        if x[0] >= self.x_impact:
+        if not hasattr(self, "x_impact") or x[0] >= self.x_impact:
             k_spine = self.process.E * (self.process.t_SOI * self.spineW) / self.spineL
             m_spine = self.mainspineA * self.process.t_SOI * self.process.density
             m_spine_v2 = self.spineW * self.spineL * self.process.t_SOI * self.process.density
@@ -674,6 +674,7 @@ class GCA:
 
         # Simulating GCAs attached to inchworm motors
         if "pawlW" in drawn_dimensions:
+            print("Drawing contains pawl")
             self.alpha = np.deg2rad(drawn_dimensions["alpha"])
             self.pawlW = drawn_dimensions["pawlW"] - 2 * undercut
             self.pawlL = drawn_dimensions["pawlL"] - undercut

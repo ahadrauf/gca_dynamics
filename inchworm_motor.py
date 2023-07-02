@@ -33,17 +33,16 @@ class InchwormMotor:
         # To access important simulation variables after the simulation
         self.sim_log = {}
 
-    def dx_dt(self, t, x, u, Fes_calc_method=2, Fb_calc_method=2):
+    def dx_dt(self, t, x, u, Fb_calc_method=2):
         """
         Calculates dx/dt for dynamics simulations
         :param t: The time of the simulation. Generally not used for dynamics.
         :param x: The state of the GCA [position of spine, velocity of spine]
         :param u: The inputs into the system [applied voltage, external applied load]
-        :param Fes_calc_method: Which version of the electrostatic force calculation to perform. Version 2 is used in the paper.
         :param Fb_calc_method: Which version of the damping force calculation to perform. Version 2 is used in the paper.
         :return: dx/dt (np.array)
         """
-        Fext = self.unzip_input(u) * self.Ngca
+        Fext = self.unzip_input(u)
         Fb = self.Fb(x, u, calc_method=Fb_calc_method)
         Fk = self.Fk(x, u)
         self.add_to_sim_log(['t', 'Fb', 'Fk'], [t, Fb, Fk])
@@ -91,6 +90,7 @@ class InchwormMotor:
                 drawn_dimensions[name] = float(value)
 
         self.Ngca = drawn_dimensions["N_gca"]
+        self.alpha = drawn_dimensions["alpha"]
         self.shuttleW = drawn_dimensions["shuttleW"] - 2 * undercut
         self.shuttleL = drawn_dimensions["shuttleL"] - 2 * undercut
         self.shuttle_area = drawn_dimensions["shuttle_area"]
