@@ -64,13 +64,14 @@ class AssemblyGCA(Assembly):
 
 
 class AssemblyInchwormMotor(Assembly):
-    def __init__(self, drawn_dimensions_filename="../layouts/fawn.csv", process=SOI(), **kwargs):
+    def __init__(self, period, drawn_dimensions_filename="../layouts/fawn.csv", process=SOI(), **kwargs):
         Assembly.__init__(self, process=process, **kwargs)
         self.gca_pullin = GCA(drawn_dimensions_filename=drawn_dimensions_filename, process=process)
         self.gca_release = GCA(drawn_dimensions_filename=drawn_dimensions_filename, process=process)
         self.inchworm = InchwormMotor(drawn_dimensions_filename=drawn_dimensions_filename, process=process)
         self.tanalpha = np.tan(self.inchworm.alpha)
         self.parts = [self.gca_pullin, self.gca_release, self.inchworm]
+        self.period = period  # release pawl waits period/4 before retracting
 
     def dx_dt(self, t, X, U, verbose=False, **kwargs):
         x_parts = self.unzip_state(X)
@@ -79,28 +80,37 @@ class AssemblyInchwormMotor(Assembly):
         xp, dxp, xr, dxr, y, dy = X
         ddxp, ddxr, ddy = dx_dt[1], dx_dt[3], dx_dt[5]
         pawly = self.gca_pullin.pawlL * np.sin(self.gca_pullin.alpha)
+
+        if t < self.period / 4:  # the release stage (V_release = 0) only occurs after T/4 time delay
+            dx_dt[2] = dx_dt[3] = 0.
+            dxr = ddxr = 0.
+        if xp > 0.99*self.gca_pullin.x_GCA:
+            dx_dt[0] = dx_dt[1] = 0.
+            dxp = ddxp = 0.
+
         if self.gca_pullin.impacted_shuttle(xp):
             N = 2 * self.inchworm.Ngca
             F_GCA = ddxp * (self.gca_pullin.mcon * self.gca_pullin.m_total)
             F_shut = ddy * (self.inchworm.mcon * self.inchworm.m_total)
 
-            ddxp_new = (F_shut * self.tanalpha / N + F_GCA - self.gca.m_total * (dxp**2 + dy**2) / pawly) / (
+            ddy_new = (F_shut * self.tanalpha / N + F_GCA - self.gca_pullin.m_total * (dxp**2 + dy**2) / pawly) / (
                     self.inchworm.m_total * self.tanalpha / N + self.gca_pullin.m_total / self.tanalpha)
-            ddy_new = (xp * ddxp_new + dxp**2 + dy**2) / pawly
+            ddxp_new = (xp * ddy_new + dxp**2 + dy**2) / pawly
             dx_dt[1] = ddxp_new
             dx_dt[5] = ddy_new
         elif not self.gca_pullin.impacted_shuttle(xp) and self.gca_release.impacted_shuttle(xr):
             # stop pawl from slipping backwards if release pawl is still connected, but allow it to keep moving forwards
-            if dx_dt[5] < 0:
+            if dx_dt[4] < 0:
+                dx_dt[4] = 0.
                 dx_dt[5] = 0.
-                dx_dt[6] = 0.
 
         if verbose:
             print("t: {}, x: {}, u: {}, dx/dt: {}".format(t, X, [u(t, x) for (x, u) in zip(x_parts, u_parts)], dx_dt))
+        # print(list(dx_dt), list(X))
         return dx_dt
 
     def unzip_state(self, x):
         return [x[:2], x[2:4], x[4:]]
 
     def unzip_input(self, x, u):
-        return [u[:2], u[2:4], u[4:]]  # (V_pullin, F_ext,pullin), (V_release, F_ext,release), (F_ext,shuttle)
+        return [u[0], u[1], u[2]]  # (V_pullin, F_ext,pullin), (V_release, F_ext,release), (F_ext,shuttle)

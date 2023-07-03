@@ -33,7 +33,7 @@ class InchwormMotor:
         # To access important simulation variables after the simulation
         self.sim_log = {}
 
-    def dx_dt(self, t, x, u, Fb_calc_method=2):
+    def dx_dt(self, t, x, u, Fes_calc_method=2, Fb_calc_method=2):
         """
         Calculates dx/dt for dynamics simulations
         :param t: The time of the simulation. Generally not used for dynamics.
@@ -47,7 +47,7 @@ class InchwormMotor:
         Fk = self.Fk(x, u)
         self.add_to_sim_log(['t', 'Fb', 'Fk'], [t, Fb, Fk])
 
-        return np.array([x[1], (Fext - Fb - Fk) / (self.mcon * self.m_total)])
+        return np.array([x[1], (-Fext - Fb - Fk) / (self.mcon * self.m_total)])
 
     def Fk(self, x, u):
         """
