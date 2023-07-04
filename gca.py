@@ -674,7 +674,6 @@ class GCA:
 
         # Simulating GCAs attached to inchworm motors
         if "pawlW" in drawn_dimensions:
-            print("Drawing contains pawl")
             self.alpha = np.deg2rad(drawn_dimensions["alpha"])
             self.pawlW = drawn_dimensions["pawlW"] - 2 * undercut
             self.pawlL = drawn_dimensions["pawlL"] - undercut

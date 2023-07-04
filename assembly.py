@@ -82,11 +82,14 @@ class AssemblyInchwormMotor(Assembly):
         pawly = self.gca_pullin.pawlL * np.sin(self.gca_pullin.alpha)
 
         if t < self.period / 4:  # the release stage (V_release = 0) only occurs after T/4 time delay
-            dx_dt[2] = dx_dt[3] = 0.
-            dxr = ddxr = 0.
-        if xp > 0.99*self.gca_pullin.x_GCA:
-            dx_dt[0] = dx_dt[1] = 0.
-            dxp = ddxp = 0.
+            dx_dt[2], dx_dt[3] = 0., 0.
+            dxr, ddxr = 0., 0.
+        if xp >= self.gca_pullin.x_GCA:
+            dx_dt[0], dx_dt[1] = 0., 0.
+            dxp, ddxp = 0., 0.
+        if (self.gca_pullin.impacted_shuttle(xp) or self.gca_release.impacted_shuttle(xr)) and dx_dt[4] < 0:
+            dx_dt[4], dx_dt[5] = 0., 0.
+            dy, ddy = 0., 0.
 
         if self.gca_pullin.impacted_shuttle(xp):
             N = 2 * self.inchworm.Ngca
@@ -98,11 +101,11 @@ class AssemblyInchwormMotor(Assembly):
             ddxp_new = (xp * ddy_new + dxp**2 + dy**2) / pawly
             dx_dt[1] = ddxp_new
             dx_dt[5] = ddy_new
-        elif not self.gca_pullin.impacted_shuttle(xp) and self.gca_release.impacted_shuttle(xr):
-            # stop pawl from slipping backwards if release pawl is still connected, but allow it to keep moving forwards
-            if dx_dt[4] < 0:
-                dx_dt[4] = 0.
-                dx_dt[5] = 0.
+        # elif not self.gca_pullin.impacted_shuttle(xp) and self.gca_release.impacted_shuttle(xr):
+        #     # stop pawl from slipping backwards if release pawl is still connected, but allow it to keep moving forwards
+        #     if dx_dt[4] < 0:
+        #         dx_dt[4] = 0.
+        #         dx_dt[5] = 0.
 
         if verbose:
             print("t: {}, x: {}, u: {}, dx/dt: {}".format(t, X, [u(t, x) for (x, u) in zip(x_parts, u_parts)], dx_dt))

@@ -57,7 +57,7 @@ def sim_gca(model, u, t_span):
     terminate_simulation.terminal = True
 
     sol = solve_ivp(f, t_span, x0, events=[terminate_simulation], dense_output=True, max_step=0.1e-6)
-    if sol.t_events[0]:
+    if len(sol.t_events[0]) > 0:
         t_sim = np.linspace(t_span[0], sol.t_events[0][0], 30)
     else:
         t_sim = np.linspace(t_span[0], t_span[1], 30)
@@ -73,11 +73,11 @@ if __name__ == "__main__":
 
     V = 60
     Fext = 0.
-    drive_freq = 2e4
-    t_max = 0.25 / drive_freq
+    drive_freq = 1e4
+    t_max = 0.5 / drive_freq
     model = setup_model(period=1 / drive_freq, u=(V, 0.))
     u = setup_inputs(V=V)  # Change V=V for pullin, V=0 for release
-    t_span = [0, min(t_max, 200e-6)]
+    t_span = [0, t_max]
 
     t_all = []
     x_all = []
@@ -86,29 +86,51 @@ if __name__ == "__main__":
 
     def postprocess_sim_data(T, X):
         global t_all, x_all
-        print(np.shape(X))
-        if T[-1] < 0.99 * t_span[1]:
-            T = np.append(T, t_max)
-            X = np.vstack([X, [model.gca_pullin.x_GCA, 0.,
-                               0., 0.,
-                               default_step_size * np.ceil(X[-1][4] / default_step_size), 0.]])
+        # if T[-1] < 0.99 * t_span[1]:
+        #     T = np.append(T, t_max)
+        #     X = np.vstack([X, [model.gca_pullin.x_GCA, 0.,
+        #                        0., 0.,
+        #                        default_step_size * np.ceil(X[-1][4] / default_step_size), 0.]])
+        if X[-1][0] > model.gca_pullin.x_GCA:
+            X[-1][4] = default_step_size * np.ceil(X[-1][4] / default_step_size)
+
         if not t_all:
             t_all.append(T)
         else:
-            t_all.append(T + t_all[-1][-1])
+            t_all.append(T + (t_all[-1][-1] - T[0]))
         x_all.append(X)
         return T, X
 
 
-    Nsteps = 6
+    def run_sim(model, u, t_span):
+        global t_all, x_all
+        T, X = postprocess_sim_data(*sim_gca(model, u, t_span))
+        if T[-1] < 0.99 * t_span[1]:
+            model.gca_pullin.terminate_simulation = lambda t, x: False
+            model.gca_pullin.x0 = np.array([model.gca_pullin.x_GCA, 0.])
+            model.gca_release.x0 = np.array([X[-1][2], X[-1][3]])
+            model.inchworm.x0 = np.array([X[-1][4], X[-1][5]])
+            T2, X2 = postprocess_sim_data(*sim_gca(model, u, [T[-1], t_span[1]]))
+            T = np.hstack([T, T2])
+            X = np.vstack([X, X2])
+        return T, X
+
+
+    Nsteps = 12
 
     # First step
-    T, X = postprocess_sim_data(*sim_gca(model, u, t_span))
+    # T, X = postprocess_sim_data(*sim_gca(model, u, t_span))
+    print("Step 0")
+    T, X = run_sim(model, u, t_span)
 
     # Second step
     for i in range(Nsteps - 1):
+        print("Step", i + 1, "/", Nsteps, end=" = ")
+        start = datetime.now()
         model = setup_model(period=1 / drive_freq, u=(V, 0.), x_prev=X[-1, :])
-        T, X = postprocess_sim_data(*sim_gca(model, u, t_span))
+        # T, X = postprocess_sim_data(*sim_gca(model, u, t_span))
+        T, X = run_sim(model, u, t_span)
+        print("Runtime =", datetime.now() - start, "s")
 
     t_sim = np.hstack(t_all)
     x_sim = np.vstack(x_all)
@@ -119,7 +141,7 @@ if __name__ == "__main__":
     x_shuttle = x_sim[:, 4]
     v_shuttle = x_sim[:, 5]
 
-    title = "GCA Simulation, V = {}".format(V)
+    title = "GCA Simulation, V = {}, Nsteps = {}, f = {} kHz".format(V, Nsteps/2, drive_freq/1e3)
     fig = plt.figure()
 
     ax1 = plt.subplot(111)
@@ -149,8 +171,10 @@ if __name__ == "__main__":
     print("Contact line:", model.gca_pullin.x_impact + 2 * 0.2e-6)
     line_contact = ax1.axhline((model.gca_pullin.x_impact + 2 * 0.2e-6) * 1e6, color='k', linestyle='--',
                                label='Pawl-Shuttle Contact')
-    for i in range(0, Nsteps, 2):
-        ax1.axvline(i * t_span[1] * 1e6, color='k', linestyle='--', label="Step {}".format(i))
+    ax1_right.axhline(0., color='r', linestyle='--')
+    for i in np.arange(0, Nsteps + 0.5, 0.5):
+        lw = 2 if i%2 == 0 else 1
+        ax1.axvline(i * t_span[1] * 1e6, color='k', linestyle='--', lw=lw, label="Step {}".format(i))
     plt.title(title)
     plt.legend([line1, line2, line11, line21, line12, line22, line_contact],
                [line1.get_label(), line2.get_label(), line11.get_label(), line21.get_label(),
