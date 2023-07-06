@@ -90,11 +90,11 @@ class GCA:
         # A stop-gap measure for velocity testing simulations, uncomment when testing modelling those
         # Note that 0.2um undercut for pawl-to-shuttle gaps, as mentioned in Craig's dissertation pg. 32
         # https://www2.eecs.berkeley.edu/Pubs/TechRpts/2020/EECS-2020-73.pdf
-        if hasattr(self, "x_impact") and x > (self.x_impact + 2 * 0.2e-6):
+        if hasattr(self, "x_impact") and x > self.x_impact:
             Estar = self.process.E / (1 - self.process.v**2)
             I_pawl = self.pawlW**3 * self.process.t_SOI / 12
             k += 3 * Estar * I_pawl / self.pawlL**3
-            Fk += self.Fkcon * k * (x - (self.x_impact + 2 * 0.2e-6)) / np.cos(self.alpha)  # 65))
+            Fk += self.Fkcon * k * (x - self.x_impact) / np.cos(self.alpha)  # 65))
         # if x > (3e-6 + 2*0.2e-6):
         #     Estar = self.process.E/(1 - self.process.v**2)
         #     w_pawl = 4e-6 - 2*self.process.undercut
@@ -331,10 +331,10 @@ class GCA:
                           [0, 0, l**2 * np.exp(-l), l**2 * np.exp(l), -l**2 * np.sin(l), -l**2 * np.cos(l)],
                           [0, 0, -l**3 * np.exp(-l), l**3 * np.exp(l), -l**3 * np.cos(l), l**3 * np.sin(l)]])
             b = np.array([(beta**3 - beta) / (2 * beta**3 + 2), 0, 0, 0, 0, 0])
-            b2, b3, c0, c1, c2, c3 = np.linalg.solve(A, b)  # np.linalg.pinv(A).dot(b)
+            b2, b3, c0, c1, c2, c3 = np.linalg.pinv(A).dot(b)  # np.linalg.solve(A, b)  # sometimes singular matrix?
             return b2, b3, c0, c1, c2, c3
         except Exception as e:
-            print("Exception occured:", a, gf, gb, beta, Vtilde, l)
+            print("Exception occured:", e, a, gf, gb, beta, Vtilde, l)
 
     def Fes_calc3(self, x, V):
         """
@@ -510,6 +510,9 @@ class GCA:
         x, xdot = self.unzip_state(x)
         return x <= 0
 
+    def impacted_shuttle(self, t, x):
+        return x >= self.x_impact if hasattr(self, "x_impact") else False
+
     def x0_pullin(self):
         """
         Initial state for pullin simulations, i.e. the GCA begins at position x[0] = 0 and velocity x[1] = 0
@@ -677,7 +680,7 @@ class GCA:
             self.alpha = np.deg2rad(drawn_dimensions["alpha"])
             self.pawlW = drawn_dimensions["pawlW"] - 2 * undercut
             self.pawlL = drawn_dimensions["pawlL"] - undercut
-            self.x_impact = drawn_dimensions["x_impact"]
+            self.x_impact = drawn_dimensions["x_impact"] + 2 * 0.2e-6
             self.k_arm = self.process.E * (self.pawlW**3) * self.process.t_SOI / (self.pawlL**3)
 
         self.update_dependent_variables()
@@ -714,9 +717,6 @@ class GCA:
             if name not in self.sim_log:
                 self.sim_log[name] = np.array([])
             self.sim_log[name] = np.append(self.sim_log[name], value)
-
-    def impacted_shuttle(self, x):
-        return x > (self.x_impact + 2 * 0.2e-6) if hasattr(self, "x_impact") else False
 
     @staticmethod
     def unzip_state(x):
