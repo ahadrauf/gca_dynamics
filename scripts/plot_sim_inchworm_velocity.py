@@ -1,21 +1,4 @@
-"""
-Comparing GCA velocity data vs. heuristic approximation
-
-Uncomment the pawl's spring force calculation in gca.py/GCA/Fk() to model the pawl's spring force.
-"""
-
-import os
-
-file_location = os.path.abspath(os.path.dirname(__file__))
-dir_location = os.path.abspath(os.path.join(file_location, '..'))
-import sys
-
-sys.path.append(file_location)
-sys.path.append(dir_location)
-
-from sim_inchworm_transient import *
 import numpy as np
-from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
 from scipy.io import loadmat, savemat
 from datetime import datetime
@@ -85,42 +68,4 @@ if __name__ == "__main__":
 
     plot_data(fig, axs, frequency, velocity_avg, velocity_std, velocity_fitted, V_labels, line_labels)
 
-    for i in range(len(V_values)):
-        slopes = []
-        freq = frequency[i]
-        velocity = velocity_avg[i]
-        for j in range(1, len(freq)):
-            slopes.append((velocity[j] - velocity[0]) / (freq[j] - freq[0]) * 1e3)
-        print(V_values[i], freq, velocity)
-        # print(V_values[i], ['{:.2f}'.format(s) for s in slopes])
-
-    data = {V: {} for V in V_values}
-    for i in range(len(V_values)):
-        V = V_values[i]
-        vel_sim_all = []
-
-        for j in range(len(frequency[i])):
-            drive_freq = frequency[i][j] * 1e3
-
-            t_sim, x_sim, F_shuttle_all = sim_inchworm(Nsteps=Nsteps, V=V, drive_freq=drive_freq, Fext_shuttle=0.)
-            vel = (x_sim[-1][4] - x_sim[0][4]) / (t_sim[-1] - t_sim[0])
-            print("Avg. speed (m/s):", vel, "Avg. step size:", x_sim[-1][4] / Nsteps)
-            vel_sim_all.append(vel)
-            data[V][frequency[i][j]] = (t_sim, x_sim, vel)
-
-        axs[i // ny][i % ny].plot(frequency[i], vel_sim_all, color='tab:orange', linestyle="--")  # convert to kHz
-        axs[i // ny][i % ny].set_yticks(np.arange(0, np.max(velocity_avg[i]) + 0.1, 0.1))
-
-    # add a big axis, hide frame
-    fig.add_subplot(111, frameon=False)
-    # hide tick and tick label of the big axis
-    plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
-    plt.xlabel("Frequency (kHz)")
-    plt.ylabel("Velocity (m/s)")
-
-    plt.tight_layout()
-    plt.savefig("../figures/" + timestamp + ".png")
-    plt.savefig("../figures/" + timestamp + ".pdf")
-    np.save("../data/simulation_results/" + timestamp + ".npy", data)
-    print("Total runtime:", datetime.now() - now)
-    plt.show()
+    data = np.load("../data/simulation_results")

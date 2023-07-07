@@ -68,10 +68,29 @@ class InchwormMotor:
         :return: Damping force
         """
         x, xdot = self.unzip_state(x)
+        w = 3e-6
+        L = 396e-6
+        Nspring_curves = 3  # 26 + 2 * 27 (divide by 26 since each spring only moves 1/26 the distance)
+        t_SOI = self.process.t_SOI
+        g = 5e-6 + x
+
+        S1 = max(L, t_SOI)
+        S2 = min(L, t_SOI)
+        beta = lambda eta: 1 - (1 - 0.42) * eta
+
+        def bsf_calc2():
+            # Squeeze film damping with a multiplier to account for fluid flow in the 2um gap between the fingers and substrate
+            t_SOI_primef = t_SOI
+            bsf = self.process.mu * Nspring_curves * S1 * (S2**3) * beta(S2 / S1) / (g**3)
+            bsf_adj = (4 * (g**3) * w + 2 * (self.process.t_ox**3) * t_SOI_primef) / (
+                    (g**3) * w + 2 * (self.process.t_ox**3) * t_SOI_primef)
+            return bsf * bsf_adj
+
+        bsf = bsf_calc2()
 
         # Couette flow damping
-        bcf = self.process.mu * (self.shuttle_area + self.shuttle_spring_area / 3) / self.process.t_ox
-        return self.Fbcon * bcf * xdot
+        bcf = self.process.mu * (self.shuttle_area + self.shuttle_spring_area / 26) / self.process.t_ox
+        return self.Fbcon * (bsf + bcf) * xdot
 
     # Helper functions
     def extract_real_dimensions_from_drawn_dimensions(self, drawn_dimensions_filename):

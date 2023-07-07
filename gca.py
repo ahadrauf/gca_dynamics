@@ -240,6 +240,8 @@ class GCA:
         a = self.fingerL_buffer / self.fingerL_total
         gf, gb = self.gf - x, self.gb + x
         if gf < 0:
+            gf = 2e-7  # hacky fix (only should trigger if your simulation's step size (max_step option for scipy.solve_ivp) is too big
+            x = self.gf - gf
             print("gf < 0", gf, self.gf, x)
             # gf = 1e-12
             # gb = self.gb + self.gf

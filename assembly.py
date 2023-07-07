@@ -91,16 +91,16 @@ class AssemblyInchwormMotor(Assembly):
             dx_dt[4], dx_dt[5] = 0., 0.
             dy, ddy = 0., 0.
 
-        if self.gca_pullin.impacted_shuttle(0, xp):
-            N = 2 * self.inchworm.Ngca
-            F_GCA = ddxp * (self.gca_pullin.mcon * self.gca_pullin.m_total)
-            F_shut = ddy * (self.inchworm.mcon * self.inchworm.m_total)
-
-            ddy_new = (F_shut * self.tanalpha / N + F_GCA - self.gca_pullin.m_total * (dxp**2 + dy**2) / pawly) / (
-                    self.inchworm.m_total * self.tanalpha / N + self.gca_pullin.m_total / self.tanalpha)
-            ddxp_new = (xp * ddy_new + dxp**2 + dy**2) / pawly
-            dx_dt[1] = ddxp_new
-            dx_dt[5] = ddy_new
+        # if self.gca_pullin.impacted_shuttle(0, xp) and xp < self.gca_pullin.x_GCA:  #  and dxp > 0
+        #     N = 2 * self.inchworm.Ngca
+        #     F_GCA = ddxp * (self.gca_pullin.mcon * self.gca_pullin.m_total)
+        #     F_shut = ddy * (self.inchworm.mcon * self.inchworm.m_total)
+        #
+        #     ddy_new = (F_shut * self.tanalpha / N + F_GCA - self.gca_pullin.m_total * (dxp**2 + dy**2) / pawly) / (
+        #             self.inchworm.m_total * self.tanalpha / N + self.gca_pullin.m_total / self.tanalpha)
+        #     ddxp_new = (xp * ddy_new + dxp**2 + dy**2) / pawly
+        #     dx_dt[1] = ddxp_new
+        #     dx_dt[5] = ddy_new
         # elif not self.gca_pullin.impacted_shuttle(xp) and self.gca_release.impacted_shuttle(xr):
         #     # stop pawl from slipping backwards if release pawl is still connected, but allow it to keep moving forwards
         #     if dx_dt[4] < 0:
@@ -116,4 +116,13 @@ class AssemblyInchwormMotor(Assembly):
         return [x[:2], x[2:4], x[4:]]
 
     def unzip_input(self, x, u):
-        return [u[0], u[1], u[2]]  # (V_pullin, F_ext,pullin), (V_release, F_ext,release), (F_ext,shuttle)
+        # return [u[0], u[1], u[2]]  # (V_pullin, F_ext,pullin), (V_release, F_ext,release), (F_ext,shuttle)
+        if self.gca_pullin.x_impact <= x[0] < self.gca_pullin.x_GCA:
+            Estar = self.gca_pullin.process.E / (1 - self.gca_pullin.process.v**2)
+            I_pawl = self.gca_pullin.pawlW**3 * self.gca_pullin.process.t_SOI / 12
+            k = 3 * Estar * I_pawl / self.gca_pullin.pawlL**3
+            N = self.inchworm.Ngca * 2
+            Fext_shuttle = -N * k * (x[0] - self.gca_pullin.x_impact) / np.sin(self.gca_pullin.alpha)  # 65))
+        else:
+            Fext_shuttle = 0.
+        return [u[0], u[1], lambda t, x: np.array([Fext_shuttle, ])]
