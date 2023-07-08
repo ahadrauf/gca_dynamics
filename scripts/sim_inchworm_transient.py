@@ -23,8 +23,9 @@ from datetime import datetime
 plt.rc('font', size=12)
 
 
-def setup_model(period, x_prev=None, u=(0., 0.)):
-    model = AssemblyInchwormMotor(period, drawn_dimensions_filename="../layouts/fawn_velocity.csv", process=SOI())
+def setup_model(period, x_prev=None, u=(0., 0.), drawn_dimensions_filename="../layouts/fawn_velocity.csv",
+                process=SOI()):
+    model = AssemblyInchwormMotor(period, drawn_dimensions_filename=drawn_dimensions_filename, process=process)
     if x_prev is None:
         model.gca_pullin.x0 = model.gca_pullin.x0_pullin()
         model.gca_release.x0 = model.gca_release.x0_pullin()  # model.gca_release.x0_release(u[:2])  # assume ideal behavior for the first step
@@ -72,30 +73,37 @@ def sim_gca(model, u, t_span, max_step=0.1e-6):
     return t_sim, x_sim
 
 
-def sim_inchworm(Nsteps, V, drive_freq, Fext_shuttle=0., print_every_step=False):
+def sim_inchworm(Nsteps, V, drive_freq, Fext_shuttle=0., print_every_step=False,
+                 drawn_dimensions_filename="../layouts/fawn_velocity.csv",
+                 process=SOI()):
     t_max = 0.5 / drive_freq
     period = 1 / drive_freq
-    model = setup_model(period=period, u=(V, 0.))
+    model = setup_model(period=period, u=(V, 0.), drawn_dimensions_filename=drawn_dimensions_filename, process=process)
     u = setup_inputs(V=V, period=period, Fext_shuttle=Fext_shuttle)  # 0.002942 = 1gf * 0.3
     t_span = [0, t_max]
     # max_step = 0.5e-6 if drive_freq < 1e4 else 0.1e-6
-    max_step = 0.05e-6
+    max_step = 0.03e-6
     max_step_inner = 0.05e-6 if drive_freq > 1e4 else 0.5e-6
 
     t_all = []
     x_all = []
     F_shuttle_all = []
-    default_step_size = 1e-6
+    curr_step = 0
+    step_count = []
+    default_step_size = 2e-6
 
     def postprocess_sim_data(T, X):
-        nonlocal t_all, x_all, F_shuttle_all
+        nonlocal t_all, x_all, F_shuttle_all, step_count
         # if T[-1] < 0.99 * t_span[1]:
         #     T = np.append(T, t_max)
         #     X = np.vstack([X, [model.gca_pullin.x_GCA, 0.,
         #                        0., 0.,
         #                        default_step_size * np.ceil(X[-1][4] / default_step_size), 0.]])
-        if X[-1][0] >= model.gca_pullin.x_GCA and (X[-1][4] - X[0][4] < default_step_size):
-            X[-1][4] = default_step_size * np.ceil(X[-1][4] / default_step_size)
+        # if X[-1][0] >= model.gca_pullin.x_GCA and (X[-1][4] - X[0][4] < default_step_size):
+        # if np.max(X[:, 0]) >= model.gca_pullin.x_GCA:
+        #     X[-1][4] = default_step_size * np.round(X[-1][4] / default_step_size)
+        # else:
+        #     X[-1][4] = default_step_size * np.floor(X[-1][4] / default_step_size)
         F_shuttle_all.append([model.dx_dt(t, x, u)[5] * model.inchworm.m_total for (t, x) in zip(T, X)])
 
         if not t_all:
@@ -103,6 +111,7 @@ def sim_inchworm(Nsteps, V, drive_freq, Fext_shuttle=0., print_every_step=False)
         else:
             t_all.append(T + (t_all[-1][-1] - T[0]))
         x_all.append(X)
+        step_count.append(curr_step * np.ones_like(T))
         return T, X
 
     def run_sim(model, u, t_span):
@@ -127,11 +136,11 @@ def sim_inchworm(Nsteps, V, drive_freq, Fext_shuttle=0., print_every_step=False)
             # v_shuttlef = np.sqrt(1 / m_shuttle * (k * ((model.gca_pullin.x_GCA - model.gca_pullin.x_impact) /
             #                                            np.cos(model.gca_pullin.alpha))**2) +
             #                      m_GCA * v_GCA0**2 + v_shuttle0**2)
-            # v_shuttlef = np.sqrt(1 / m_shuttle * (N * k * (model.gca_pullin.x_GCA - model.gca_pullin.x_impact)**2 /
-            #                                       np.sin(model.gca_pullin.alpha)) / 4 +
-            #                      v_shuttle0**2)
+            v_shuttlef1 = np.sqrt(1 / m_shuttle * (N * k * (model.gca_pullin.x_GCA - model.gca_pullin.x_impact)**2 /
+                                                   np.sin(model.gca_pullin.alpha)) / 4 +
+                                  v_shuttle0**2)
             # v_shuttlef1 = (N * m_GCA * v_GCA0 + m_shuttle * v_shuttle0) / m_shuttle
-            v_shuttlef1 = np.sqrt(1 / m_shuttle * N * m_GCA * v_GCA0**2 / 50 + v_shuttle0**2)
+            # v_shuttlef1 = np.sqrt(1 / m_shuttle * N * m_GCA * v_GCA0**2 / 50 + v_shuttle0**2)
             # v_shuttlef = np.sqrt(1 / m_shuttle * N * (m_GCA * v_GCA0**2 - k_spine * x_spine**2 / 2) + v_shuttle0**2)
             # v_shuttlef1 = np.sqrt(1 / m_shuttle * N * (k * (model.gca_pullin.x_GCA - model.gca_pullin.x_impact)**2 /
             #                                            np.sin(model.gca_pullin.alpha) / 4 +
@@ -141,33 +150,40 @@ def sim_inchworm(Nsteps, V, drive_freq, Fext_shuttle=0., print_every_step=False)
             model.gca_pullin.terminate_simulation = lambda t, x: False
             model.gca_pullin.x0 = np.array([model.gca_pullin.x_GCA, 0.])
             model.gca_release.x0 = np.array([X[-1][2], X[-1][3]])
-            model.inchworm.x0 = np.array([X[-1][4], v_shuttlef1])
-            # model.inchworm.x0 = np.array([X[-1][4], X[-1][5]])
+            # model.inchworm.x0 = np.array([X[-1][4], v_shuttlef1])
+            model.inchworm.x0 = np.array([X[-1][4], X[-1][5]])
             T2, X2 = postprocess_sim_data(*sim_gca(model, u, [T[-1], t_span[1]], max_step=max_step_inner))
             T = np.hstack([T, T2])
             X = np.vstack([X, X2])
+
+        if np.max(X[:, 0]) >= model.gca_pullin.x_GCA:
+            X[-1][4] = default_step_size * np.round(X[-1][4] / default_step_size)
         return T, X
 
     # First step
     # T, X = postprocess_sim_data(*sim_gca(model, u, t_span))
     print("Step 0 / {}, V = {}, drive_freq = {}, Fext_shuttle = {}".format(Nsteps, V, drive_freq, Fext_shuttle),
-          end=" --> ")
+          end=" --> ", flush=True)
+    curr_step = 0
     T, X = run_sim(model, u, t_span)
 
     # Second step
     start = datetime.now()
     # print("Step", i + 1, "/", 2*Nsteps, end=" = ")
-    for curr_step in range(Nsteps * 2 - 1):
+    for curr_step in np.arange(0.5, Nsteps, 0.5):
         if print_every_step:
-            print("Step", (curr_step + 1) / 2, end=" --> ")
-        model = setup_model(period=1 / drive_freq, u=(V, 0.), x_prev=X[-1, :])
+            print("Step", curr_step, end=" --> ", flush=True)
+        model = setup_model(period=1 / drive_freq, u=(V, 0.), x_prev=X[-1, :],
+                            drawn_dimensions_filename=drawn_dimensions_filename, process=process)
         # T, X = postprocess_sim_data(*sim_gca(model, u, t_span))
         T, X = run_sim(model, u, t_span)
-    print("Runtime =", datetime.now() - start, "s")
+    print("Runtime =", datetime.now() - start, "s", flush=True)
 
     t_sim = np.hstack(t_all)
     x_sim = np.vstack(x_all)
-    return t_sim, x_sim, F_shuttle_all
+    F_shuttle_all = np.hstack(F_shuttle_all)
+    step_counts = np.hstack(step_count)
+    return t_sim, x_sim, F_shuttle_all, step_counts
 
 
 if __name__ == "__main__":
@@ -178,13 +194,15 @@ if __name__ == "__main__":
 
     V = 50
     Fext_shuttle = 0.
-    drive_freq = 17e3  # 4.8e3
+    drive_freq = 1e3  # 4.8e3
     t_max = 0.5 / drive_freq
     period = 1 / drive_freq
     t_span = [0, t_max]
 
-    Nsteps = 8
-    t_sim, x_sim, F_shuttle_all = sim_inchworm(Nsteps, V, drive_freq, Fext_shuttle, print_every_step=True)
+    Nsteps = 5
+    t_sim, x_sim, F_shuttle_all, step_counts = sim_inchworm(Nsteps, V, drive_freq, Fext_shuttle, print_every_step=True,
+                                                            drawn_dimensions_filename="../layouts/fawn_velocity.csv",
+                                                            process=SOI())
     xp = x_sim[:, 0]
     vp = x_sim[:, 1]
     xr = x_sim[:, 2]
@@ -192,19 +210,16 @@ if __name__ == "__main__":
     x_shuttle = x_sim[:, 4]
     v_shuttle = x_sim[:, 5]
     f_sim = np.hstack(F_shuttle_all)
-    print("Force shuttle", list(np.ndarray.flatten(f_sim)))
+    print("Force shuttle", list(np.ndarray.flatten(f_sim)), flush=True)
 
+    midway_point = 0  # np.size(t_sim) * 2 // 3
+    avg_speed = (x_shuttle[-1] - x_shuttle[midway_point]) / (t_sim[-1] - t_sim[midway_point])
     print("Total shuttle distance:", x_shuttle[-1], "Avg. step size:", x_shuttle[-1] / Nsteps * 1e6,
-          "Avg. speed (m/s):", x_shuttle[-1] / t_sim[-1])
+          "Avg. speed (m/s):", avg_speed, flush=True)
 
-    title = "GCA Simulation, V = {}, Nsteps = {}, f = {} kHz".format(V, Nsteps, drive_freq / 1e3)
     fig = plt.figure()
 
     ax1 = plt.subplot(111)
-    # line1, = plt.plot(t_sim_pullin * 1e6, sol_pullin.sol(t_sim_pullin)[0, :] * 1e6, 'b-', label="x")
-    # plt.plot((t_sim_release + offset) * 1e6, sol_release.sol(t_sim_release)[0, :] * 1e6, 'b-', label='_nolegend_')
-    # plt.plot(t_sim_pullin * 1e6, sol_pullin.sol(t_sim_pullin)[2, :] * 1e6, 'k--', label='_nolegend_')
-    # plt.plot((t_sim_release + offset) * 1e6, sol_release.sol(t_sim_release)[2, :] * 1e6, 'k--', label='_nolegend_')
     line1, = plt.plot(t_sim * 1e6, xp * 1e6, '-', c='tab:blue', label="x_GCA_pullin")
     line11, = plt.plot(t_sim * 1e6, xr * 1e6, '-', c='tab:green', label="x_GCA_release")
     line12, = plt.plot(t_sim * 1e6, x_shuttle * 1e6, '-', c='tab:orange', label='x_shuttle')
@@ -231,6 +246,10 @@ if __name__ == "__main__":
     for i in np.arange(0, Nsteps * 2 + 0.5, 0.5):
         lw = 2 if i % 2 == 0 else 1
         ax1.axvline(i * t_span[1] * 1e6, color='k', linestyle='--', lw=lw, label="Step {}".format(i))
+
+    title = "GCA Simulation, V = {}, Nsteps = {}, f = {} kHz, Avg. Vel = {:.1f} mm/s".format(V, Nsteps,
+                                                                                             drive_freq / 1e3,
+                                                                                             1e3 * avg_speed)
     plt.title(title)
     plt.legend([line1, line2, line11, line21, line12, line22, line_contact],
                [line1.get_label(), line2.get_label(), line11.get_label(), line21.get_label(),
@@ -243,7 +262,14 @@ if __name__ == "__main__":
     #              xytext=(0, 0), textcoords='offset points', ha='right', va='top')
     # plt.legend(handles=[line1, line2])
     plt.tight_layout()
-    # plt.savefig("../figures/" + timestamp + ".png")
+    fig.savefig("../figures/" + timestamp + ".png", bbox_inches="tight")
     # plt.savefig("../figures/" + timestamp + ".pdf")
+
+    fig2, ax2 = plt.subplots(1, 1)
+    ax2.plot(t_sim, F_shuttle_all)
+    for i in np.arange(0, Nsteps * 2 + 0.5, 0.5):
+        lw = 2 if i % 2 == 0 else 1
+        ax2.axvline(i * t_span[1] * 1e6, color='k', linestyle='--', lw=lw, label="Step {}".format(i))
+
     plt.show()
     # plot_solution(sol, t_sim, model, plt_title=title)

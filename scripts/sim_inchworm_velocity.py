@@ -17,10 +17,12 @@ from sim_inchworm_transient import *
 import numpy as np
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 from scipy.io import loadmat, savemat
 from datetime import datetime
 
 plt.rc('font', size=11)
+colors = mcolors.TABLEAU_COLORS.keys()
 
 
 def setup_plot(len_x, len_y, plt_title=None, x_label="", y_label=""):
@@ -54,7 +56,7 @@ if __name__ == "__main__":
     timestamp = now.strftime("%Y%m%d_%H_%M_%S") + name_clarifier
     print(timestamp)
 
-    Nsteps = 10
+    Nsteps = 20
     Fext_shuttle = 0
     nx, ny = 2, 2
     # latexify(fig_width=6, columns=3)
@@ -99,17 +101,27 @@ if __name__ == "__main__":
         V = V_values[i]
         vel_sim_all = []
 
+        frequencies_to_plot = []
         for j in range(len(frequency[i])):
+            # if j % 3 == 1 or j % 3 == 2:
+            #     continue
+            frequencies_to_plot.append(frequency[i][j])
             drive_freq = frequency[i][j] * 1e3
 
-            t_sim, x_sim, F_shuttle_all = sim_inchworm(Nsteps=Nsteps, V=V, drive_freq=drive_freq, Fext_shuttle=0.)
-            vel = (x_sim[-1][4] - x_sim[0][4]) / (t_sim[-1] - t_sim[0])
+            t_sim, x_sim, F_shuttle_all, step_counts = sim_inchworm(Nsteps=Nsteps, V=V, drive_freq=drive_freq,
+                                                                    Fext_shuttle=0.,
+                                                                    drawn_dimensions_filename="../layouts/fawn_velocity.csv",
+                                                                    process=SOI())
+            # midway_point = np.size(t_sim) // 2
+            midway_point = 0
+            vel = (x_sim[-1][4] - x_sim[midway_point][4]) / (t_sim[-1] - t_sim[midway_point])
             print("Avg. speed (m/s):", vel, "Avg. step size:", x_sim[-1][4] / Nsteps)
             vel_sim_all.append(vel)
-            data[V][frequency[i][j]] = (t_sim, x_sim, vel)
+            data[V][frequency[i][j]] = (t_sim, x_sim, F_shuttle_all, step_counts, vel)
 
-        axs[i // ny][i % ny].plot(frequency[i], vel_sim_all, color='tab:orange', linestyle="--")  # convert to kHz
-        axs[i // ny][i % ny].set_yticks(np.arange(0, np.max(velocity_avg[i]) + 0.1, 0.1))
+        axs[i // ny][i % ny].plot(frequencies_to_plot, vel_sim_all, color='tab:orange',
+                                  linestyle="--")  # convert to kHz
+        # axs[i // ny][i % ny].set_yticks(np.arange(0, np.max(velocity_avg[i]) + 0.1, 0.1))
 
     # add a big axis, hide frame
     fig.add_subplot(111, frameon=False)
@@ -122,5 +134,6 @@ if __name__ == "__main__":
     plt.savefig("../figures/" + timestamp + ".png")
     plt.savefig("../figures/" + timestamp + ".pdf")
     np.save("../data/simulation_results/" + timestamp + ".npy", data)
+    print({V: {f: datum[2] for f, datum in value.items()} for V, value in data.items()})
     print("Total runtime:", datetime.now() - now)
     plt.show()

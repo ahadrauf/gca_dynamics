@@ -76,7 +76,27 @@ class AssemblyInchwormMotor(Assembly):
     def dx_dt(self, t, X, U, verbose=False, **kwargs):
         x_parts = self.unzip_state(X)
         u_parts = self.unzip_input(X, U)
-        dx_dt = np.hstack([part.dx_dt(t, x, u(t, x), **kwargs) for (part, x, u) in zip(self.parts, x_parts, u_parts)])
+
+        dx_dt0 = self.gca_pullin.dx_dt(t, x_parts[0], u_parts[0](t, x_parts[0]), **kwargs)
+        dx_dt1 = self.gca_release.dx_dt(t, x_parts[1], u_parts[1](t, x_parts[1]), **kwargs)
+
+        if self.gca_pullin.x_impact <= X[0] < 0.99 * self.gca_pullin.x_GCA:
+            Estar = self.gca_pullin.process.E / (1 - self.gca_pullin.process.v**2)
+            I_pawl = self.gca_pullin.pawlW**3 * self.gca_pullin.process.t_SOI / 12
+            k = 3 * Estar * I_pawl / self.gca_pullin.pawlL**3
+            N = self.inchworm.Ngca * 2 if X[1] > 0 else 0
+            N += self.inchworm.Ngca * 2 if X[3] > 0 else 0
+            F_GCA = N * dx_dt0[1] * self.gca_pullin.m_total
+            Fext_shuttle = -N * k * (X[0] - self.gca_pullin.x_impact) / np.cos(self.gca_pullin.alpha) - F_GCA / np.tan(
+                self.gca_pullin.alpha) / 10
+            # Fext_shuttle = -F_GCA / np.tan(self.gca_pullin.alpha) / 3
+        else:
+            Fext_shuttle = 0.
+        u_parts[2] = lambda t, x: np.array([Fext_shuttle, ])
+
+        dx_dt2 = self.inchworm.dx_dt(t, x_parts[2], u_parts[2](t, x_parts[2]), **kwargs)
+        dx_dt = np.hstack([dx_dt0, dx_dt1, dx_dt2])
+        # dx_dt = np.hstack([part.dx_dt(t, x, u(t, x), **kwargs) for (part, x, u) in zip(self.parts, x_parts, u_parts)])
         xp, dxp, xr, dxr, y, dy = X
         ddxp, ddxr, ddy = dx_dt[1], dx_dt[3], dx_dt[5]
         pawly = self.gca_pullin.pawlL * np.sin(self.gca_pullin.alpha)
@@ -116,13 +136,13 @@ class AssemblyInchwormMotor(Assembly):
         return [x[:2], x[2:4], x[4:]]
 
     def unzip_input(self, x, u):
-        # return [u[0], u[1], u[2]]  # (V_pullin, F_ext,pullin), (V_release, F_ext,release), (F_ext,shuttle)
-        if self.gca_pullin.x_impact <= x[0] < self.gca_pullin.x_GCA:
-            Estar = self.gca_pullin.process.E / (1 - self.gca_pullin.process.v**2)
-            I_pawl = self.gca_pullin.pawlW**3 * self.gca_pullin.process.t_SOI / 12
-            k = 3 * Estar * I_pawl / self.gca_pullin.pawlL**3
-            N = self.inchworm.Ngca * 2
-            Fext_shuttle = -N * k * (x[0] - self.gca_pullin.x_impact) / np.sin(self.gca_pullin.alpha)  # 65))
-        else:
-            Fext_shuttle = 0.
-        return [u[0], u[1], lambda t, x: np.array([Fext_shuttle, ])]
+        return [u[0], u[1], u[2]]  # (V_pullin, F_ext,pullin), (V_release, F_ext,release), (F_ext,shuttle)
+        # if self.gca_pullin.x_impact <= x[0] < self.gca_pullin.x_GCA:
+        #     Estar = self.gca_pullin.process.E / (1 - self.gca_pullin.process.v**2)
+        #     I_pawl = self.gca_pullin.pawlW**3 * self.gca_pullin.process.t_SOI / 12
+        #     k = 3 * Estar * I_pawl / self.gca_pullin.pawlL**3
+        #     N = self.inchworm.Ngca * 2
+        #     Fext_shuttle = -N * k * (x[0] - self.gca_pullin.x_impact) / np.sin(self.gca_pullin.alpha)  # 65))
+        # else:
+        #     Fext_shuttle = 0.
+        # return [u[0], u[1], lambda t, x: np.array([Fext_shuttle, ])]

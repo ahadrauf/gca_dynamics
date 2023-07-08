@@ -94,7 +94,7 @@ class GCA:
             Estar = self.process.E / (1 - self.process.v**2)
             I_pawl = self.pawlW**3 * self.process.t_SOI / 12
             k += 3 * Estar * I_pawl / self.pawlL**3
-            Fk += self.Fkcon * k * (x - self.x_impact) / np.cos(self.alpha)  # 65))
+            Fk += self.Fkcon * k * (x - self.x_impact) / np.sin(self.alpha)  # 65))
         # if x > (3e-6 + 2*0.2e-6):
         #     Estar = self.process.E/(1 - self.process.v**2)
         #     w_pawl = 4e-6 - 2*self.process.undercut

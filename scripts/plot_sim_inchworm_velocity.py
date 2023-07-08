@@ -68,4 +68,48 @@ if __name__ == "__main__":
 
     plot_data(fig, axs, frequency, velocity_avg, velocity_std, velocity_fitted, V_labels, line_labels)
 
-    data = np.load("../data/simulation_results")
+    file_name = "20230707_09_37_21_inchworm_velocity_sim_vs_data_air"
+    file_name = "20230707_12_34_31_inchworm_velocity_sim_vs_data_air"
+    file_name = "20230707_22_41_22_inchworm_velocity_sim_vs_data_air"
+    data = np.load("../data/simulation_results/" + file_name + ".npy",
+                   allow_pickle=True).item()
+    for i in range(len(V_values)):
+        V = V_values[i]
+        frequencies = list(data[V].keys())
+        data_to_plot = []
+        for j in range(len(frequencies)):
+            freq = frequencies[j]
+            t_sim, x_sim, avg_vel = data[V][freq]
+            print("V = {}, freq = {} kHz --> {}".format(V, freq, np.shape(x_sim)))
+
+            N = np.size(t_sim)
+            # if V == 50 or (V == 55 and freq < 35) or freq < 10:
+            #     min_point = 0
+            #     max_point = np.size(t_sim) * 8 // 15
+            # elif freq < 15 or (V == 50):
+            #     min_point = np.size(t_sim) * 1 // 15
+            #     max_point = np.size(t_sim) * 9 // 15
+            # else:
+            #     min_point = np.size(t_sim) * 2 // 15
+            #     max_point = np.size(t_sim) * 10 // 15
+            min_point = 0
+            max_point = N // 2
+            avg_vel = (x_sim[max_point][4] - x_sim[min_point][4]) / (t_sim[max_point] - t_sim[min_point])
+            data_to_plot.append(avg_vel)
+        axs[i // ny][i % ny].plot(frequencies, data_to_plot, color='tab:orange',
+                                  linestyle="--")  # convert to kHz
+
+    # add a big axis, hide frame
+    fig.add_subplot(111, frameon=False)
+    # hide tick and tick label of the big axis
+    plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
+    plt.xlabel("Frequency (kHz)")
+    plt.ylabel("Velocity (m/s)")
+
+    plt.tight_layout()
+    # plt.savefig("../figures/" + timestamp + ".png")
+    # plt.savefig("../figures/" + timestamp + ".pdf")
+    # np.save("../data/simulation_results/" + timestamp + ".npy", data)
+    print({V: {f: datum[2] for f, datum in value.items()} for V, value in data.items()})
+    print("Total runtime:", datetime.now() - now)
+    plt.show()

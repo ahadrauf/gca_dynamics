@@ -72,7 +72,7 @@ class InchwormMotor:
         L = 396e-6
         Nspring_curves = 3  # 26 + 2 * 27 (divide by 26 since each spring only moves 1/26 the distance)
         t_SOI = self.process.t_SOI
-        g = 5e-6 + x
+        g = 5e-6 + x / 26
 
         S1 = max(L, t_SOI)
         S2 = min(L, t_SOI)
@@ -90,7 +90,7 @@ class InchwormMotor:
 
         # Couette flow damping
         bcf = self.process.mu * (self.shuttle_area + self.shuttle_spring_area / 26) / self.process.t_ox
-        return self.Fbcon * (bsf + bcf) * xdot
+        return self.Fbcon * (bcf + bsf) * xdot
 
     # Helper functions
     def extract_real_dimensions_from_drawn_dimensions(self, drawn_dimensions_filename):
@@ -112,7 +112,7 @@ class InchwormMotor:
         self.alpha = drawn_dimensions["alpha"]
         self.shuttleW = drawn_dimensions["shuttleW"] - 2 * undercut
         self.shuttleL = drawn_dimensions["shuttleL"] - 2 * undercut
-        self.shuttle_area = drawn_dimensions["shuttle_area"]
+        self.shuttle_area = self.shuttleW * self.shuttleL  # drawn_dimensions["shuttle_area"]
         self.shuttle_mass = drawn_dimensions["shuttle_mass"]
         self.shuttle_spring_k = drawn_dimensions["shuttle_spring_k"]
         self.shuttle_spring_area = drawn_dimensions["shuttle_spring_area"]
