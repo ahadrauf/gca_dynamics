@@ -26,6 +26,7 @@ print(colors)
 data = np.load(file_loc + file_name + ".npy", allow_pickle=True)
 save_data_vacuum, save_data_air = data
 fingerL_values = sorted(save_data_vacuum.keys())
+print(fingerL_values, save_data_vacuum.keys())
 print(fingerL_values)
 
 nx, ny = 3, 3
@@ -38,6 +39,8 @@ for i in range(len(fingerL_values)):
 
     V_converged, times_converged = save_data_air[fingerL]
     line_air, = ax.plot(V_converged, times_converged, colors[1])
+
+
 
     label = r"L=%0.1f$\mu$m" % (fingerL_values[i - 1] * 1e6)
     ax.annotate(label, xy=(1, 1), xycoords='axes fraction', fontsize=10, xytext=(-2, -2), textcoords='offset points',
@@ -54,7 +57,7 @@ else:
     fig.legend([line_air], ['Release Time, Air'], loc='lower right')
 
 plt.tight_layout()
-plt.savefig("../figures/" + timestamp + ".png")
-plt.savefig("../figures/" + timestamp + ".svg")
-plt.savefig("../figures/" + timestamp + ".pdf")
+# plt.savefig("../figures/" + timestamp + ".png")
+# plt.savefig("../figures/" + timestamp + ".svg")
+# plt.savefig("../figures/" + timestamp + ".pdf")
 plt.show()

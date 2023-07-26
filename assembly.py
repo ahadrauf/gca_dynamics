@@ -111,8 +111,14 @@ class AssemblyInchwormMotor(Assembly):
             dx_dt[4], dx_dt[5] = 0., 0.
             dy, ddy = 0., 0.
 
-        # if self.gca_pullin.impacted_shuttle(0, xp) and xp < self.gca_pullin.x_GCA:  #  and dxp > 0
-        #     N = 2 * self.inchworm.Ngca
+        # if self.gca_pullin.x_impact <= xp < self.gca_pullin.x_GCA:  # and dxp > 0
+        # #     # ddy =
+        # #     # dx_dt[5] = abs(self.tanalpha * ((self.gca_pullin.x_GCA - xp)*ddxp - dxp**2 - dy**2))
+        # #     dx_dt[5] = abs((ddxp * (self.gca_pullin.x_GCA - xp) - dxp**2 - dy**2) / (
+        # #                 (self.gca_pullin.x_GCA - xp) / self.tanalpha))
+        # #     # dx_dt[5] = (dxp**2 + dy**2 + (self.gca_pullin.x_GCA - xp)*ddxp) / self.tanalpha
+        #     # print(ddy, dx_dt[5])
+        #     N = 1  # 2 * self.inchworm.Ngca
         #     F_GCA = ddxp * (self.gca_pullin.mcon * self.gca_pullin.m_total)
         #     F_shut = ddy * (self.inchworm.mcon * self.inchworm.m_total)
         #

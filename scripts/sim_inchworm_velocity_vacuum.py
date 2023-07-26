@@ -48,6 +48,7 @@ if __name__ == "__main__":
     V_values = [50, 55, 60, 65]
     frequencies = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1,
                    2, 3, 4, 5, 6, 7, 8, 9, 10]  # [1, 5, 10, 15, 20, 25, 30, 35, 40]
+    # frequencies = [0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10]
 
     data = {V: {} for V in V_values}
     for i in range(len(V_values)):
@@ -62,7 +63,7 @@ if __name__ == "__main__":
             t_sim, x_sim, F_shuttle_all, step_counts = sim_inchworm(Nsteps=Nsteps, V=V, drive_freq=drive_freq,
                                                                     Fext_shuttle=0.,
                                                                     drawn_dimensions_filename="../layouts/fawn_velocity.csv",
-                                                                    process=SOIvacuum())
+                                                                    process=SOI())
             # print('end sim')
             vel = (x_sim[-1][4] - x_sim[0][4]) / (t_sim[-1] - t_sim[0])
             print("Avg. speed (m/s):", vel, "Avg. step size:", x_sim[-1][4] / Nsteps)

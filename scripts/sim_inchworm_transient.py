@@ -157,7 +157,7 @@ def sim_inchworm(Nsteps, V, drive_freq, Fext_shuttle=0., print_every_step=False,
             X = np.vstack([X, X2])
 
         if np.max(X[:, 0]) >= model.gca_pullin.x_GCA:
-            X[-1][4] = default_step_size * np.round(X[-1][4] / default_step_size)
+            X[-1][4] = default_step_size * np.ceil(X[-1][4] / default_step_size)
         return T, X
 
     # First step
@@ -194,7 +194,7 @@ if __name__ == "__main__":
 
     V = 50
     Fext_shuttle = 0.
-    drive_freq = 1e3  # 4.8e3
+    drive_freq = 2e4  # 4.8e3
     t_max = 0.5 / drive_freq
     period = 1 / drive_freq
     t_span = [0, t_max]
@@ -266,7 +266,11 @@ if __name__ == "__main__":
     # plt.savefig("../figures/" + timestamp + ".pdf")
 
     fig2, ax2 = plt.subplots(1, 1)
-    ax2.plot(t_sim, F_shuttle_all)
+    ax2.plot(t_sim * 1e6, F_shuttle_all, lw=3)
+    ax2.set_xlabel("Time (us)")
+    ax2.set_ylabel("Force (N)")
+    print(list(t_sim))
+    print(list(F_shuttle_all))
     for i in np.arange(0, Nsteps * 2 + 0.5, 0.5):
         lw = 2 if i % 2 == 0 else 1
         ax2.axvline(i * t_span[1] * 1e6, color='k', linestyle='--', lw=lw, label="Step {}".format(i))
