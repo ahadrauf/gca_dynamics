@@ -58,34 +58,19 @@ if __name__ == '__main__':
         dx_fingerbending_twosided.append(y[-1]*1e6)
 
         Fes_fingerbending, y, _ = model.gca.Fes_calc4(x, V)
-        # if 0 <= y[-1] < 0.335e-6:
-        F_fingerbending_numerical.append(Fes_fingerbending*1e6)
-        dx_fingerbending_numerical.append(y[-1]*1e6)
+        if 0 <= y[-1] < 0.335e-6:
+            F_fingerbending_numerical.append(Fes_fingerbending*1e6)
+            dx_fingerbending_numerical.append(y[-1]*1e6)
 
-        if V == 65:
-            print("Numerical:", Fes_fingerbending, dx_fingerbending)
-
-        Fes_fingerbending, y, _ = model.gca.Fes_calc_trapezoidalfinger(x, V)
-        # if 0 <= y[-1] < 0.335e-6:
-        F_fingerbending_trapezoidal.append(Fes_fingerbending * 1e6)
-        dx_fingerbending_trapezoidal.append(y[-1] * 1e6)
-
-        if V == 65:
-            print("Numerical Trapezoidal:", Fes_fingerbending, dx_fingerbending)
-    # difference = [pp/fb for pp, fb in zip(F_parallelplate, F_fingerbending)]
-    # print(np.max(difference), difference)
     print("Model difference", F_parallelplate[-1]/F_fingerbending[-1])
 
-    # print("Parallel plate DC | Parallel Plate | CoventorWare | Finger Bending")
     print("Parallel plate DC:", dx_parallelplate_contreras, F_parallelplate_contreras)
     print("Parallel Plate:", dx_parallelplate, F_parallelplate)
     print("CoventorWare:", dx_coventorware, F_coventorware)
     print("Finger Bending:", dx_fingerbending, F_fingerbending)
     print("Finger Bending Two Sided:", dx_fingerbending_twosided, F_fingerbending_twosided)
-    print("Finger Bending Numerical Integration:", dx_fingerbending_numerical, F_fingerbending_numerical)
-    print("Finger Bending Numerical Trapezoidal:", dx_fingerbending_trapezoidal, F_fingerbending_trapezoidal)
 
-    # Calculate rough R2 score
+    # Calculate R2 score
     actual_F = F_coventorware
     pred_F = []
     for actual_dx in dx_coventorware:
@@ -98,8 +83,8 @@ if __name__ == '__main__':
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
-    plt.plot(dx_parallelplate_contreras, F_parallelplate_contreras, 'b-')
-    # plt.plot(dx_parallelplate, F_parallelplate, 'b-')
+    # plt.plot(dx_parallelplate_contreras, F_parallelplate_contreras, 'b-')
+    plt.plot(dx_parallelplate, F_parallelplate, 'b-')
     plt.plot(dx_coventorware, F_coventorware, 'ko--')
 
     V_coventorware = np.linspace(20, 90, 8)
@@ -117,12 +102,8 @@ if __name__ == '__main__':
     plt.plot(dx_fingerbending_twosided, F_fingerbending_twosided, color='purple') #, marker='o')
     plt.plot(dx_fingerbending_numerical, F_fingerbending_numerical, 'g-')
     plt.plot(dx_fingerbending_trapezoidal, F_fingerbending_trapezoidal, 'orange')
-    # plt.legend(["Parallel Plate (WPD)", "Parallel Plate", "Coventorware (WPD)", "Finger Bending Model"])
-    # plt.legend(["Parallel Plate Model", "CoventorWare Simulation", "Finger Bending Model",
-    #             "Numerical Integration of Eq. 20"])
-    # plt.legend(["Parallel Plate Model", "CoventorWare Simulation", "Finger Bending Model", "Two-Sided Finger Bending Model"]) #, "Numerical Integration of Eq. 20"])
     plt.legend(["Parallel Plate Model", "CoventorWare Simulation", "Finger Bending Model",
-                "Two-Sided Finger Bending Model", "Numerical Integration of Eq. 20", "Trapezoidal Finger"])
+                "Two-Sided Finger Bending Model", "Numerical Integration of Eq. 20"])
     plt.xlabel(r"Finger Tip Deflection ($\mu$m)")
     plt.ylabel(r"Force on Conductor ($\mu$N)")
 

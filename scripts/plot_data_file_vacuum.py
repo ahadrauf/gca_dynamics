@@ -12,8 +12,8 @@ plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['ps.fonttype'] = 42
 
 file_loc = "../data/simulation_results/"
-file_name = "20230623_23_26_26_vacuum_V_fingerL_release"
-# file_name = "20230624_00_29_51_vacuum_V_fingerL_pullin"
+# file_name = "20230623_23_26_26_vacuum_V_fingerL_release"
+file_name = "20230624_00_29_51_vacuum_V_fingerL_pullin"
 
 now = datetime.now()
 name_clarifier = "_edited_" + file_name
@@ -42,7 +42,7 @@ for i in range(len(fingerL_values)):
 
 
 
-    label = r"L=%0.1f$\mu$m" % (fingerL_values[i - 1] * 1e6)
+    label = r"L=%0.1f$\mu$m" % (fingerL_values[i] * 1e6)
     ax.annotate(label, xy=(1, 1), xycoords='axes fraction', fontsize=10, xytext=(-2, -2), textcoords='offset points',
                 ha='right', va='top')
 

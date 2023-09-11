@@ -491,6 +491,84 @@ class GCA:
         # return Fescon*Fes, sol, None
         return Fescon * Fes, [y(xi) for xi in np.linspace(0, self.fingerL_total, 11)], None
 
+    def Fes_calc_trapezoidalfinger(self, x, V):
+        """
+        Modified version of Fes_calc4 with trapezoidal fingers
+
+        :param x: GCA state
+        :param V: Input voltage
+        :return: (Output force, an array (size 11,) of the finger deflection at evenly spaced intervals)
+        """
+        start_time = timer()
+        Estar = self.process.E / (1 - self.process.v**2)
+        a = self.fingerL_buffer / self.fingerL_total
+        gf, gb = self.gf - x, self.gb + x
+        if gf < 0:
+            print("gf < 0", gf, self.gf, x)
+        beta = gb / gf
+        fingerWbase = self.fingerWbase  # 5.835e-6
+        fingerWtip = self.fingerWtip  # 2e-6
+        Vtilde = V * np.sqrt(
+            6 * self.process.eps0 * self.fingerL_total**4 / (Estar * gf**3)) * np.sqrt(self.Fescon)
+        l = np.power(Vtilde**2 * (2 / beta**3 + 2), 0.25)
+        A = (fingerWbase - a * fingerWtip) / (1 - a)
+        B = (fingerWtip - fingerWbase) / (1 - a)
+        print("A", A, "B", B)
+
+        def dy_dxi(xi, state):
+            y, dy, ddy, dddy = state
+            ddddy = Vtilde**2 * (xi >= a) * (np.divide(1., np.square(1 - y)) - np.divide(1., np.square(beta + y))) * \
+                    np.divide(1., np.power(self.fingerW, 3))
+            ret = np.vstack((dy, ddy, dddy, ddddy))
+            return ret
+
+        def bc(ya, yb):
+            return np.array([ya[0], ya[1], yb[2], yb[3]])  # yb[0] - y0[0, len(xi_range) - 1]])  #
+
+        # xi = np.linspace(0., self.fingerL_total, 11)
+        xi_range = np.linspace(0., 1., 1001)
+        b2, b3, c0, c1, c2, c3 = self.Fes_calc2_helper(x, V)
+
+        y = lambda xi: (xi < a) * (b2 * xi**2 + b3 * xi**3) + (xi >= a) * (c0 * np.exp(-l * xi) + c1 * np.exp(l * xi) +
+                                                                           c2 * np.sin(l * xi) + c3 * np.cos(l * xi) -
+                                                                           (beta**3 - beta) / (2 * beta**3 + 2))
+        dy = lambda xi: (xi < a) * (2 * b2 * xi + 3 * b3 * xi**2) + (xi >= a) * (
+                c0 * -l * np.exp(-l * xi) + c1 * l * np.exp(l * xi) +
+                c2 * l * np.cos(l * xi) + c3 * -l * np.sin(l * xi))
+        ddy = lambda xi: (xi < a) * (2 * b2 + 6 * b3 * xi) + (xi >= a) * (
+                c0 * l**2 * np.exp(-l * xi) + c1 * l**2 * np.exp(l * xi) +
+                c2 * -l**2 * np.sin(l * xi) + c3 * -l**2 * np.cos(l * xi))
+        dddy = lambda xi: (xi < a) * (6 * b3) + (xi >= a) * (c0 * -l**3 * np.exp(-l * xi) + c1 * l**3 * np.exp(l * xi) +
+                                                             c2 * -l**3 * np.cos(l * xi) + c3 * l**3 * np.sin(l * xi))
+        y0 = np.zeros((4, np.size(xi_range)))
+        for i in range(len(xi_range)):
+            xi = xi_range[i]
+            y0[0, i] = y(xi)
+            y0[1, i] = dy(xi)
+            y0[2, i] = ddy(xi)
+            y0[3, i] = dddy(xi)
+
+        sol = solve_bvp(dy_dxi, bc, xi_range, y0, verbose=0, tol=0.0001)
+
+        y = lambda xi: gf * sol.sol(xi / self.fingerL_total)[0]
+
+        dF_dx = lambda xi: self.Fescon * self.Nfing * 0.5 * V**2 * self.process.eps0 * self.process.t_SOI * \
+                           (1 / (gf - y(xi))**2 - 1 / (gb + y(xi))**2)
+        Fes = quad(dF_dx, a * self.fingerL_total, self.fingerL_total)[0]
+        end_time = timer()
+        # print("Runtime for Fes_calc4, V =", V, "=", (end_time - start_time)*1e6, 'us --> ', Fes, y(self.fingerL_total))
+
+        # calculate fringing field
+        # Source: [1]V. Leus, D. Elata, V. Leus, and D. Elata, “Fringing field effect in electrostatic actuators,” 2004.
+        h = gf
+        t = self.fingerL
+        w = self.process.t_SOI
+        Fescon = 1 + h / np.pi / w * (1 + t / np.sqrt(t * h + t**2))  # F = 1/2*V^2*dC/dx (C taken from Eq. 10)
+        # Fescon = 1.
+        # print("Fescon", Fescon)
+        # return Fescon*Fes, sol, None
+        return Fescon * Fes, [y(xi) for xi in np.linspace(0, self.fingerL_total, 11)], None
+
     def pulled_in(self, t, x):
         """
         Checks whether the GCA has pulled in, i.e. when the GCA spine hits the gap stop
