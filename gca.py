@@ -72,6 +72,12 @@ class GCA:
                 Fes = self.Fes_calc1(x, V)
             elif calc_method == 2:
                 Fes = self.Fes_calc2(x, V)[0]
+            elif calc_method == 3:
+                Fes = self.Fes_calc3(x, V)[0]
+            elif calc_method == 4:
+                Fes = self.Fes_calc4(x, V)[0]
+            elif calc_method == "trap":
+                Fes = self.Fes_calc_trapezoidalfinger(x, V)[0]
             else:
                 Fes = 0
 
@@ -115,7 +121,10 @@ class GCA:
         :return: Damping force
         """
         x, xdot = self.unzip_state(x)
-        fingerW = self.fingerW
+        if hasattr(self, "fingerW"):
+            fingerW = self.fingerW
+        else:  # TODO: figure out a more accurate version of this
+            fingerW = (self.fingerWtip + self.fingerWbase) / 2
         fingerL = self.fingerL
         t_SOI = self.process.t_SOI
         gf = self.gf - x
@@ -499,26 +508,38 @@ class GCA:
         :param V: Input voltage
         :return: (Output force, an array (size 11,) of the finger deflection at evenly spaced intervals)
         """
-        start_time = timer()
         Estar = self.process.E / (1 - self.process.v**2)
         a = self.fingerL_buffer / self.fingerL_total
         gf, gb = self.gf - x, self.gb + x
         if gf < 0:
             print("gf < 0", gf, self.gf, x)
+            gf = 1e-9
         beta = gb / gf
         fingerWbase = self.fingerWbase  # 5.835e-6
         fingerWtip = self.fingerWtip  # 2e-6
+        fingerWavg = (fingerWbase + fingerWtip) / 2
         Vtilde = V * np.sqrt(
-            6 * self.process.eps0 * self.fingerL_total**4 / (Estar * gf**3)) * np.sqrt(self.Fescon)
-        l = np.power(Vtilde**2 * (2 / beta**3 + 2), 0.25)
-        A = (fingerWbase - a * fingerWtip) / (1 - a)
-        B = (fingerWtip - fingerWbase) / (1 - a)
-        print("A", A, "B", B)
+            6 * self.process.eps0 * self.fingerL_total**4 / (Estar * gf**3)) * np.sqrt(self.Fescon)  # [meters^1.5]
+
+        # Use this if the trapezoidal finger reaches fingerWbase at point a (after the overlap buffer)
+        # A = (fingerWbase - a * fingerWtip) / (1 - a)
+        # B = (fingerWtip - fingerWbase) / (1 - a) / self.fingerL_total
+
+        # Use this if the trapezoidal finger continues its slope until the base
+        A = fingerWbase
+        B = (fingerWtip - A) / self.fingerL_total
+        # print("A", A, "B", B, "B*L", B * self.fingerL_total, "A+BL", A + B * self.fingerL_total,
+        #       "A+BLalpha", A + B * self.fingerL_total * a)
 
         def dy_dxi(xi, state):
             y, dy, ddy, dddy = state
-            ddddy = Vtilde**2 * (xi >= a) * (np.divide(1., np.square(1 - y)) - np.divide(1., np.square(beta + y))) * \
-                    np.divide(1., np.power(self.fingerW, 3))
+            fingerW = A + B * xi * self.fingerL_total
+            # fingerW = self.fingerW
+            # ddddy = Vtilde**2 * (xi >= a) * (np.divide(1., np.square(1 - y)) - np.divide(1., np.square(beta + y))) * \
+            #         np.divide(1., np.power(self.fingerW, 3))
+            ddddy = Vtilde**2 / fingerW**3 * (xi >= a) * (np.divide(1., np.square(1 - y)) - np.divide(1., np.square(
+                beta + y))) - 6 * B / fingerW * self.fingerL_total * dddy - \
+                    6 * B**2 / fingerW**2 * self.fingerL_total**2 * ddy
             ret = np.vstack((dy, ddy, dddy, ddddy))
             return ret
 
@@ -529,6 +550,7 @@ class GCA:
         xi_range = np.linspace(0., 1., 1001)
         b2, b3, c0, c1, c2, c3 = self.Fes_calc2_helper(x, V)
 
+        l = np.power(Vtilde**2 / fingerWavg**3 * (2 / beta**3 + 2), 0.25)
         y = lambda xi: (xi < a) * (b2 * xi**2 + b3 * xi**3) + (xi >= a) * (c0 * np.exp(-l * xi) + c1 * np.exp(l * xi) +
                                                                            c2 * np.sin(l * xi) + c3 * np.cos(l * xi) -
                                                                            (beta**3 - beta) / (2 * beta**3 + 2))
@@ -555,8 +577,6 @@ class GCA:
         dF_dx = lambda xi: self.Fescon * self.Nfing * 0.5 * V**2 * self.process.eps0 * self.process.t_SOI * \
                            (1 / (gf - y(xi))**2 - 1 / (gb + y(xi))**2)
         Fes = quad(dF_dx, a * self.fingerL_total, self.fingerL_total)[0]
-        end_time = timer()
-        # print("Runtime for Fes_calc4, V =", V, "=", (end_time - start_time)*1e6, 'us --> ', Fes, y(self.fingerL_total))
 
         # calculate fringing field
         # Source: [1]V. Leus, D. Elata, V. Leus, and D. Elata, “Fringing field effect in electrostatic actuators,” 2004.
@@ -567,7 +587,7 @@ class GCA:
         # Fescon = 1.
         # print("Fescon", Fescon)
         # return Fescon*Fes, sol, None
-        return Fescon * Fes, [y(xi) for xi in np.linspace(0, self.fingerL_total, 11)], None
+        return Fescon * Fes, [y(xi) for xi in np.linspace(0, self.fingerL_total, 101)], None
 
     def pulled_in(self, t, x):
         """
@@ -737,7 +757,6 @@ class GCA:
         self.supportW = drawn_dimensions["supportW"] - 2 * undercut
         self.supportL = drawn_dimensions["supportL"]  # - undercut
         self.Nfing = drawn_dimensions["Nfing"]
-        self.fingerW = drawn_dimensions["fingerW"] - 2 * undercut
         self.fingerL = drawn_dimensions["fingerL"] - undercut
         self.fingerL_buffer = drawn_dimensions["fingerL_buffer"]
         self.spineW = drawn_dimensions["spineW"] - 2 * undercut
@@ -747,6 +766,12 @@ class GCA:
         self.gapstopL_half = drawn_dimensions["gapstopL_half"] - undercut
         # self.anchored_electrodeW = drawn_dimensions["anchored_electrodeW"] - 2*undercut
         # self.anchored_electrodeL = drawn_dimensions["anchored_electrodeL"] - undercut
+
+        if "fingerW" in drawn_dimensions:
+            self.fingerW = drawn_dimensions["fingerW"] - 2 * undercut
+        else:
+            self.fingerWtip = drawn_dimensions["fingerWtip"] - 2 * undercut
+            self.fingerWbase = drawn_dimensions["fingerWbase"] - 2 * undercut
 
         if "etch_hole_size" in drawn_dimensions:
             self.etch_hole_width = drawn_dimensions["etch_hole_size"] + 2 * undercut
@@ -779,7 +804,13 @@ class GCA:
                                     (self.etch_hole_spacing + self.etch_hole_width))
         self.mainspineA = self.spineW * self.spineL - self.num_etch_holes * (
                 self.etch_hole_width * self.etch_hole_height)
-        self.spineA = self.mainspineA + self.Nfing * self.fingerL_total * self.fingerW + 2 * self.gapstopW * self.gapstopL_half
+
+        if hasattr(self, "fingerW"):
+            self.spineA = self.mainspineA + self.Nfing * self.fingerL_total * self.fingerW + \
+                          2 * self.gapstopW * self.gapstopL_half
+        elif hasattr(self, "fingerWtip"):
+            self.spineA = self.mainspineA + self.Nfing * self.fingerL_total * \
+                          (self.fingerWtip + self.fingerWbase) / 2 + 2 * self.gapstopW * self.gapstopL_half
         if hasattr(self, "pawlW"):  # GCA includes arm (attached to inchworm motor)
             self.spineA += self.pawlW * self.pawlL
 

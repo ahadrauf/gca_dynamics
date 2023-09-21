@@ -1,0 +1,19 @@
+function [GCA] = fawn()
+GCA.gf = 4.83e-6;  % front gap (called x_0 in the paper)
+GCA.gb = 7.75e-6;  % back gap (called x_b in the paper)
+GCA.x_GCA = 3.83e-6;  % distance the spine has to travel before hitting the gap stop (x0 - xf in the paper)
+GCA.supportW = 3e-6;  % width of the support beams (called w_spr in the paper)
+GCA.supportL = 240.851e-6;  % length of the support beams (called L_spr in the paper) 
+GCA.Nfing = 70;  % number of GCA fingers (called N in the paper)
+GCA.fingerW = 5.005e-6;  % width of GCA fingers (called wf in the paper)
+GCA.fingerL = 76.472e-6;  % overlap length of the GCA fingers (called Lol in the paper)
+GCA.fingerL_buffer = 10e-6;  % extra length at the base of the GCA fingers but which doesn't overlap adjacent fingers (called L - Lol in the paper)
+GCA.spineW = 20e-6;  % width of the spine (called w_spine in the paper) 
+GCA.spineL = 860e-6;  % length of the spine (called L_spine in the paper)
+GCA.etch_hole_size = 8e-6;  % size of etch hole squares in the spine (not in paper, see figure below)
+GCA.etch_hole_spacing = 6e-6;  % spacing between etch hole squares in the spine (not in paper, see figure below)
+GCA.gapstopW = 10e-6;  % width of the gap stop jutting out from either side of the spine (not in paper, see figure below)
+GCA.gapstopL_half = 45e-6;  % length of the gap stop jutting out from either side of the spine (not in paper, see figure below). To avoid double-counting area, this is only the length from the side of the spine to the end of the gapstop.
+GCA.anchored_electrodeW = 787.934e-6;  % this was used for an older version of the GCA schematic, can be deleted in more recent versions
+GCA.anchored_electrodeL = 50e-6;  % this was used for an older version of the GCA schematic, can be deleted in more recent versions
+end
